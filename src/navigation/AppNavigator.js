@@ -1,0 +1,91 @@
+import React from 'react';
+import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from "@expo/vector-icons";
+import { useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
+
+import LoginScreen from '../screens/LoginScreen';
+import ForgotPasswordScreen from '@/screens/authentication/ForgotPassword';
+import SettingsScreen from '@/screens/SettingsScreen';
+import ThemeSettingsScreen from '@/screens/ThemeSettingsScreen';
+import LanguageSettingsScreen from '@/screens/LanguageSettingsScreen';
+import HomeScreen from '@/screens/HomeScreen';
+import TaskDetailsScreen from '../screens/TaskDetailsScreen';
+
+import { useTheme } from '@/shared/theme';
+
+const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
+
+
+function MainAppNavigator() {
+    const { theme } = useTheme();
+    const { t } = useTranslation();
+
+    return (
+        <Tab.Navigator screenOptions={() => ({
+            headerShown: false,
+            tabBarActiveTintColor: theme.primary,
+            tabBarInactiveTintColor: theme.textSecondary,
+            tabBarStyle: {
+                backgroundColor: theme.background,
+                borderTopColor: theme.border
+            }
+        })}>
+            <Tab.Screen
+                name="Home"
+                component={HomeScreen}
+                options={{
+                    title: t('navigation.home'),
+                    tabBarIcon: ({ color }) => <Ionicons name="home" color={color} size={24} />,
+                }}
+            />
+            <Tab.Screen
+                name="Settings"
+                component={SettingsScreen}
+                options={{
+                    title: t('settings.title', 'Settings'),
+                    tabBarIcon: ({ color }) => <Ionicons name="settings" color={color} size={24} />,
+                }}
+            />
+        </Tab.Navigator>
+    );
+}
+
+export default function AppNavigator() {
+    const { isLoggedIn } = useSelector(state => state.auth);
+    const { theme } = useTheme();
+
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            {!isLoggedIn ? (
+                <>
+                    <Stack.Screen name="Login" component={LoginScreen} />
+                    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+                </>
+            ) : (
+                <>
+                    <Stack.Screen name="Main" component={MainAppNavigator} />
+                    <Stack.Screen
+                        name="TaskDetail"
+                        component={TaskDetailsScreen}
+                        options={{
+                            headerShown: true,
+                            title: 'Task Details',
+                            headerStyle: {
+                                backgroundColor: theme.background,
+                            },
+                            headerTintColor: theme.text,
+                            headerTitleStyle: {
+                                fontWeight: 'bold',
+                            },
+                        }}
+                    />
+                    <Stack.Screen name="ThemeSettings" component={ThemeSettingsScreen} options={{ headerShown: false }} />
+                    <Stack.Screen name="LanguageSettings" component={LanguageSettingsScreen} options={{ headerShown: false }} />
+                </>
+            )}
+        </Stack.Navigator>
+    );
+} 

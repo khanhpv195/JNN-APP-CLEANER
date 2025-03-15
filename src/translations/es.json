@@ -1,0 +1,90 @@
+{
+  "settings": {
+    "title": "Configuración",
+    "language": "Idioma",
+    "theme": "Tema",
+    "pricing": "Precios",
+    "darkMode": "Modo oscuro",
+    "notifications": "Notificaciones",
+    "about": "Acerca de",
+    "themeSettings": "Configuración de tema",
+    "languageSettings": "Configuración de idioma",
+    "pricingSettings": "Precios de servicios",
+    "comingSoon": "Próximamente"
+  },
+  "navigation": {
+    "home": "Inicio",
+    "dashboard": "Panel",
+    "properties": "Propiedades",
+    "customers": "Clientes",
+    "calendar": "Calendario",
+    "profile": "Perfil",
+    "notification": "Notificaciones",
+    "details": "Detalles",
+    "message": "Mensajes",
+    "search": "Buscar"
+  },
+  "languages": {
+    "english": "Inglés",
+    "vietnamese": "Vietnamita",
+    "spanish": "Español",
+    "chinese": "Chino",
+    "japanese": "Japonés"
+  },
+  "pricing": {
+    "cleanerPrice": "Precio de limpieza ($ por hora)",
+    "maintenancePrice": "Precio de mantenimiento ($ por hora)",
+    "savePricing": "Guardar precios"
+  },
+  "theme": {
+    "primaryColor": "Color primario (Botones, Encabezados)",
+    "secondaryColor": "Color secundario",
+    "accentColor": "Color de acento (Destacados, Enlaces)",
+    "backgroundColor": "Color de fondo",
+    "cardColor": "Color de tarjeta",
+    "textColor": "Color de texto",
+    "previewComponents": "Vista previa de componentes",
+    "saveTheme": "Guardar tema",
+    "resetTheme": "Restablecer al tema predeterminado"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "ok": "OK",
+    "back": "Atrás"
+  },
+  "taskDetail": {
+    "cleaningTask": "Tarea de Limpieza",
+    "maintenanceTask": "Tarea de Mantenimiento",
+    "date": "Fecha",
+    "checkIn": "Entrada",
+    "checkOut": "Salida",
+    "price": "Precio",
+    "payment": "Pago",
+    "taskDetails": "Detalles de la Tarea",
+    "checklist": "Lista de Verificación",
+    "images": "Imágenes",
+    "issues": "Problemas",
+    "noImages": "No hay imágenes disponibles",
+    "loadingTask": "Cargando información de la tarea...",
+    "errorLoading": "Error al cargar la tarea. Por favor, inténtelo de nuevo.",
+    "notFound": "Información de la tarea no encontrada o se produjo un error.",
+    "paymentHistory": "Historial de Pagos",
+    "paymentDate": "Fecha de Pago",
+    "paymentStatus": "Estado",
+    "paymentAmount": "Cantidad",
+    "noPaymentHistory": "No hay historial de pagos disponible",
+    "assignedTo": "Asignado a",
+    "name": "Nombre",
+    "role": "Rol",
+    "phone": "Teléfono",
+    "email": "Correo Electrónico",
+    "unknown": "Desconocido",
+    "description": "Descripción"
+  },
+  "actions": {
+    "refresh": "Actualizar",
+    "accept": "Aceptar",
+    "reject": "Rechazar"
+  }
+}

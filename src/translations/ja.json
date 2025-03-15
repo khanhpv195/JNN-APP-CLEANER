@@ -1,0 +1,90 @@
+{
+  "settings": {
+    "title": "設定",
+    "language": "言語",
+    "theme": "テーマ",
+    "pricing": "価格",
+    "darkMode": "ダークモード",
+    "notifications": "通知",
+    "about": "詳細",
+    "themeSettings": "テーマ設定",
+    "languageSettings": "言語設定",
+    "pricingSettings": "サービス料金",
+    "comingSoon": "近日公開"
+  },
+  "navigation": {
+    "home": "ホーム",
+    "dashboard": "ダッシュボード",
+    "properties": "物件",
+    "customers": "顧客",
+    "calendar": "カレンダー",
+    "profile": "プロフィール",
+    "notification": "通知",
+    "details": "詳細",
+    "message": "メッセージ",
+    "search": "検索"
+  },
+  "languages": {
+    "english": "英語",
+    "vietnamese": "ベトナム語",
+    "spanish": "スペイン語",
+    "chinese": "中国語",
+    "japanese": "日本語"
+  },
+  "pricing": {
+    "cleanerPrice": "清掃料金（時給$）",
+    "maintenancePrice": "メンテナンス料金（時給$）",
+    "savePricing": "価格を保存"
+  },
+  "theme": {
+    "primaryColor": "主要色（ボタン、ヘッダー）",
+    "secondaryColor": "副色",
+    "accentColor": "アクセント色（ハイライト、リンク）",
+    "backgroundColor": "背景色",
+    "cardColor": "カード色",
+    "textColor": "テキスト色",
+    "previewComponents": "テーマのプレビュー",
+    "saveTheme": "テーマを保存",
+    "resetTheme": "デフォルトテーマに戻す"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "ok": "OK",
+    "back": "戻る"
+  },
+  "taskDetail": {
+    "cleaningTask": "清掃タスク",
+    "maintenanceTask": "メンテナンスタスク",
+    "date": "日付",
+    "checkIn": "チェックイン",
+    "checkOut": "チェックアウト",
+    "price": "価格",
+    "payment": "支払い",
+    "taskDetails": "タスク詳細",
+    "checklist": "チェックリスト",
+    "images": "画像",
+    "issues": "問題",
+    "noImages": "利用可能な画像はありません",
+    "loadingTask": "タスク情報を読み込んでいます...",
+    "errorLoading": "タスクの読み込み中にエラーが発生しました。もう一度お試しください。",
+    "notFound": "タスク情報が見つからないか、エラーが発生しました。",
+    "paymentHistory": "支払い履歴",
+    "paymentDate": "支払日",
+    "paymentStatus": "状態",
+    "paymentAmount": "金額",
+    "noPaymentHistory": "支払い履歴はありません",
+    "assignedTo": "担当者",
+    "name": "名前",
+    "role": "役割",
+    "phone": "電話番号",
+    "email": "メール",
+    "unknown": "不明",
+    "description": "説明"
+  },
+  "actions": {
+    "refresh": "更新",
+    "accept": "承認",
+    "reject": "拒否"
+  }
+}
