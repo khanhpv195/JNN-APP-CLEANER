@@ -20,6 +20,11 @@ const listTaskCleanerApis = {
         }
         return POST(`/detailTask`, { body: body })
     },
+    updateProperty: (params) => {
+        return POST('/updateProperty', {
+            body: params
+        });
+    },
 
     updateTaskCleaner: (params) => {
         console.log('Updating task with params:', {

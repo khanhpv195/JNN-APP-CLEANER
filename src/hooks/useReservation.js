@@ -23,7 +23,7 @@ export const useReservation = () => {
             // Fix timezone offset by setting time to start of day in local timezone
             const localDate = new Date(date);
             localDate.setHours(0, 0, 0, 0);
-
+            console.log('localDate', localDate);
             const response = await cleanerApis.listTask({
                 date: localDate.toISOString()
             });
@@ -51,6 +51,7 @@ export const useReservation = () => {
                         ? new Date(task.reservationDetails.checkOut)
                         : null,
                     status: task?.status || 'UNKNOWN',
+                    price: task?.price?.amount || 0,
                     propertyId: task?.propertyId?._id || {},
                     propertyDetails: task?.propertyId || {},
                     reservationDetails: task?.reservationDetails || {},

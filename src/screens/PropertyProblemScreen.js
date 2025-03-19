@@ -241,7 +241,10 @@ export default function PropertyProblemScreen({ route, navigation }) {
                     date: new Date(),
                     taskId: taskId,
                     description: problem.description,
-                    images: [problem.imageUrl]
+                    images: [problem.imageUrl],
+                    status: 'PENDING',
+                    completedAt: null,
+
                 }))
             };
 

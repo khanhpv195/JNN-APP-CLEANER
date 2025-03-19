@@ -123,7 +123,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
 
         const navigationParams = {
             taskId: taskId,
-            propertyId: task?.propertyId?._id
+            propertyId: task?.propertyId
         };
 
         // Log navigation params
@@ -179,7 +179,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                         Project #{task?._id?.slice(-8) || 'N/A'}
                     </Text>
                     <Text style={styles.projectTitle}>
-                        {task?.propertyId?.name || 'Unknown Property'}
+                        {task?.propertyDetails?.name || 'Unknown Property'}
                     </Text>
                 </View>
 

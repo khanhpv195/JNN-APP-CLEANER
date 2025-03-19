@@ -12,6 +12,7 @@ import ThemeSettingsScreen from '@/screens/ThemeSettingsScreen';
 import LanguageSettingsScreen from '@/screens/LanguageSettingsScreen';
 import HomeScreen from '@/screens/HomeScreen';
 import TaskDetailsScreen from '../screens/TaskDetailsScreen';
+import PropertyProblemScreen from '../screens/PropertyProblemScreen';
 
 import { useTheme } from '@/shared/theme';
 
@@ -82,6 +83,12 @@ export default function AppNavigator() {
                             },
                         }}
                     />
+                    <Stack.Screen
+                        name="PropertyProblem"
+                        component={PropertyProblemScreen}
+                        options={{ headerShown: true, title: 'Property Problem' }}
+                    />
+
                     <Stack.Screen name="ThemeSettings" component={ThemeSettingsScreen} options={{ headerShown: false }} />
                     <Stack.Screen name="LanguageSettings" component={LanguageSettingsScreen} options={{ headerShown: false }} />
                 </>

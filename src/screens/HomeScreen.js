@@ -4,34 +4,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useReservation } from '../hooks/useReservation';
 import { STATUS } from '../constants/status';
-import { useTheme, useThemedStyles } from '../shared/theme';
 export default function HomeScreen() {
     const navigation = useNavigation();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [calendarDays, setCalendarDays] = useState([]);
     const { cleaningTasks, loading, error, updateTask, fetchCleaningTasks } = useReservation();
-    const { theme } = useTheme();
-    // We need to wrap the styles into a function that accepts theme
-    const themedStyles = useThemedStyles((theme) => ({
-        ...styles,
-        container: {
-            ...styles.container,
-            backgroundColor: theme.background || '#f5f5f5',
-        }
-    }));
 
     console.log('cleaningTasks', cleaningTasks);
     // Add this function to filter tasks by selected date
     const getFilteredTasks = () => {
-        // Nếu không có ngày, hiển thị tất cả task cho ngày hiện tại
-        const today = new Date().toDateString();
-        const isToday = selectedDate.toDateString() === today;
-
         return cleaningTasks.filter(task => {
-            // Nếu không có checkOutDate và đang xem ngày hiện tại, hiển thị task
-            if (!task.checkOutDate) return isToday;
-
-            // Nếu có checkOutDate, kiểm tra xem có trùng với ngày đã chọn không
+            if (!task.checkOutDate) return false;
             const taskDate = new Date(task.checkOutDate);
             return taskDate.toDateString() === selectedDate.toDateString();
         });
@@ -56,10 +39,7 @@ export default function HomeScreen() {
                 fullDate: date,
                 day: daysOfWeek[date.getDay()],
                 hasTask: cleaningTasks.some(task => {
-                    // Nếu không có checkOutDate, hiển thị ở ngày hiện tại
-                    if (!task.checkOutDate) return i === 0;
-
-                    // Nếu có checkOutDate, kiểm tra xem có trùng với ngày không
+                    if (!task.checkOutDate) return false;
                     const taskDate = new Date(task.checkOutDate);
                     return taskDate.toDateString() === date.toDateString();
                 }),
@@ -78,6 +58,7 @@ export default function HomeScreen() {
     };
 
     const handleTaskPress = (task) => {
+        console.log('Selected task:', task);
         navigation.navigate('TaskDetail', {
             taskId: task._id,
             task: task
@@ -131,12 +112,11 @@ export default function HomeScreen() {
     // Task item render
     const renderTask = ({ item }) => {
         const formatCheckoutDateTime = (dateString) => {
-            if (!dateString) return {
-                date: 'Not specified',
-                time: 'Not specified'
-            };
+            if (!dateString) return 'N/A';
 
+            // Use moment to handle date consistently
             const date = new Date(dateString);
+
             return {
                 date: date.toLocaleString('en-US', {
                     month: 'short',
@@ -151,22 +131,7 @@ export default function HomeScreen() {
             };
         };
 
-        // Sử dụng checkOutDate hoặc ngày hiện tại nếu không có
-        const checkout = formatCheckoutDateTime(item.checkOutDate || new Date());
-
-        // Lấy thông tin từ propertyDetails
-        const propertyName = item.propertyDetails?.name || 'Unnamed Property';
-        const price = item.propertyDetails?.price_cleaning || 0;
-
-        // Lấy địa chỉ từ propertyDetails nếu có
-        let address = 'No address provided';
-        if (item.propertyDetails?.address) {
-            if (typeof item.propertyDetails.address === 'object' && item.propertyDetails.address.display) {
-                address = item.propertyDetails.address.display;
-            } else if (typeof item.propertyDetails.address === 'string') {
-                address = item.propertyDetails.address;
-            }
-        }
+        const checkout = formatCheckoutDateTime(item.checkOutDate);
 
         return (
             <TouchableOpacity
@@ -178,13 +143,14 @@ export default function HomeScreen() {
                 onPress={() => handleTaskPress(item)}
             >
                 <View style={styles.taskHeader}>
-                    <Text style={styles.roomNumber}>{propertyName}</Text>
+                    <Text style={styles.roomNumber}>Room {item.roomNumber}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
                         <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
                     </View>
                 </View>
 
-                <Text style={styles.taskAddress}>{address}</Text>
+                <Text style={styles.taskTitle}>{item.title}</Text>
+                <Text style={styles.taskAddress}>{item.address}</Text>
 
                 <View style={styles.infoGrid}>
                     <View style={styles.checkoutInfo}>
@@ -201,14 +167,14 @@ export default function HomeScreen() {
                         <View style={styles.infoItem}>
                             <Ionicons name="cash-outline" size={16} color="#666" />
                             <Text style={styles.infoText}>
-                                ${(price / 100).toFixed(2)}
+                                ${item.propertyDetails?.price_cleaning || 0}
                             </Text>
                         </View>
 
                         <View style={styles.infoItem}>
-                            <Ionicons name="home-outline" size={16} color="#666" />
+                            <Ionicons name="key-outline" size={16} color="#666" />
                             <Text style={styles.infoText}>
-                                ID: {item.propertyId?.substring(0, 8) || 'N/A'}
+                                Code: {item.propertyDetails?.access_code || 'N/A'}
                             </Text>
                         </View>
                     </View>
@@ -238,20 +204,16 @@ export default function HomeScreen() {
     }
 
     return (
-        <View style={themedStyles.container}>
+        <View style={styles.container}>
             {renderCalendar()}
             <FlatList
+                // Change data to use filtered tasks
                 data={getFilteredTasks()}
                 renderItem={renderTask}
-                keyExtractor={item => item._id}  // Changed from item.id to item._id
-                contentContainerStyle={themedStyles.listContent}
+                keyExtractor={item => item.id}
+                contentContainerStyle={styles.listContent}
                 refreshing={loading}
                 onRefresh={handleRefresh}
-                ListEmptyComponent={
-                    <View style={themedStyles.emptyContainer}>
-                        <Text style={themedStyles.emptyText}>No tasks for this date</Text>
-                    </View>
-                }
             />
         </View>
     );
@@ -448,16 +410,5 @@ const styles = StyleSheet.create({
         marginLeft: 4,
         fontSize: 12,
         color: '#666',
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    emptyText: {
-        fontSize: 16,
-        color: '#666',
-        textAlign: 'center',
     },
 });
