@@ -248,7 +248,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                         <Ionicons name="cash" size={24} color="#666" />
                         <Text style={styles.detailText}>Cleaning Price</Text>
                         <Text style={styles.priceText}>
-                            ${task?.propertyDetails?.price_cleaning || 0}
+                            {(task?.price?.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}$
                         </Text>
                     </View>
 

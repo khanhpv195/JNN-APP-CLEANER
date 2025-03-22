@@ -10,7 +10,8 @@
     "themeSettings": "テーマ設定",
     "languageSettings": "言語設定",
     "pricingSettings": "サービス料金",
-    "comingSoon": "近日公開"
+    "comingSoon": "近日公開",
+    "bankInformation": "銀行情報"
   },
   "navigation": {
     "home": "ホーム",
@@ -22,14 +23,16 @@
     "notification": "通知",
     "details": "詳細",
     "message": "メッセージ",
-    "search": "検索"
+    "search": "検索",
+    "accountBank": "銀行情報"
   },
   "languages": {
     "english": "英語",
     "vietnamese": "ベトナム語",
     "spanish": "スペイン語",
     "chinese": "中国語",
-    "japanese": "日本語"
+    "japanese": "日本語",
+    "accountBank": "銀行情報"
   },
   "pricing": {
     "cleanerPrice": "清掃料金（時給$）",

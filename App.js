@@ -35,53 +35,6 @@ function AppContent() {
     const initializeApp = async () => {
       // Check login status
       dispatch(checkAuthState());
-
-      // Set up notifications
-      if (Platform.OS === 'android' || Platform.OS === 'ios') {
-        try {
-          // Chỉ đăng ký token khi chưa có
-          if (!expoPushToken) {
-            const token = await registerForPushNotificationsAsync();
-            setExpoPushToken(token);
-          }
-
-          // Set up notification listeners
-          if (!notificationListeners.current) {
-            notificationListeners.current = setupNotificationListeners(
-              notification => {
-                setNotification(notification);
-              },
-              response => {
-                // Handle when user taps on notification
-                const data = response.notification.request.content.data;
-                console.log('Notification data:', data);
-
-                // Xử lý điều hướng khi nhấn vào thông báo tin nhắn
-                if (data.type === 'message' && data.reservationId) {
-                  // Kiểm tra xem người dùng đã đăng nhập chưa
-                  if (isLoggedIn) {
-                    // Điều hướng đến màn hình chat với thông tin tin nhắn
-                    navigationRef.current?.navigate('Message', {
-                      screen: 'chat',
-                      params: {
-                        reservationId: data.reservationId,
-                        messages: data.messageData?.messages || [],
-                        guestId: data.messageData?.latest_message?.sender?._id
-                      }
-                    });
-                  }
-                }
-                // Các loại thông báo khác
-                else if (data.screen) {
-                  navigationRef.current?.navigate(data.screen, data.params);
-                }
-              }
-            );
-          }
-        } catch (error) {
-          console.log('Error setting up notifications:', error);
-        }
-      }
     };
 
     initializeApp();
@@ -92,7 +45,37 @@ function AppContent() {
         removeNotificationListeners(notificationListeners.current);
       }
     };
-  }, [dispatch]);  // Chỉ phụ thuộc vào dispatch, không phụ thuộc vào isLoggedIn và user
+  }, [dispatch]);  // Chỉ phụ thuộc vào dispatch
+
+  // Tạo một useEffect riêng để kiểm tra bankAccount mỗi khi user hoặc isLoggedIn thay đổi
+  useEffect(() => {
+    if (isLoggedIn && user) {
+      console.log('User data:', JSON.stringify(user));
+
+      // Check bankAccount in detail
+      console.log('Bank account value:', user.bankAccount);
+      console.log('Bank account type:', typeof user.bankAccount);
+      console.log('Is array?', Array.isArray(user.bankAccount));
+
+      if (typeof user.bankAccount === 'object' && !Array.isArray(user.bankAccount)) {
+        console.log('Object keys:', Object.keys(user.bankAccount));
+      }
+
+      // Kiểm tra xem bankAccount có tồn tại và có dữ liệu không
+      const hasBankAccount = user.bankAccount &&
+        (typeof user.bankAccount === 'object' &&
+          ((Array.isArray(user.bankAccount) ? user.bankAccount.length > 0 : Object.keys(user.bankAccount).length > 0)));
+
+      console.log('Final check - Bank account exists:', hasBankAccount);
+
+      if (!hasBankAccount) {
+        console.log('Bank account missing or empty, redirecting to AccountBank');
+        navigationRef.current?.navigate('AccountBank');
+      } else {
+        console.log('Bank account exists, no redirect needed');
+      }
+    }
+  }, [isLoggedIn, user]);  // Phụ thuộc vào isLoggedIn và user để kiểm tra mỗi khi thông tin thay đổi
 
   // Tạo một useEffect riêng để xử lý lưu token khi user đăng nhập
   useEffect(() => {

@@ -16,23 +16,41 @@ export default function HomeScreen() {
         return cleaningTasks.filter(task => {
             if (!task.checkOutDate) return false;
             const taskDate = new Date(task.checkOutDate);
-            return taskDate.toDateString() === selectedDate.toDateString();
+            taskDate.setHours(0, 0, 0, 0); // Normalize task date to start of day
+
+            const compareDate = new Date(selectedDate);
+            compareDate.setHours(0, 0, 0, 0); // Normalize selected date
+
+            return taskDate.toDateString() === compareDate.toDateString();
         });
     };
 
     useEffect(() => {
         generateCalendarDays();
-        fetchCleaningTasks(selectedDate);
+        // Create a new date object with time set to midnight to avoid timezone issues
+        const dateToFetch = new Date(selectedDate);
+        dateToFetch.setHours(0, 0, 0, 0);
+
+        // Log date in a readable format
+        console.log('Fetching tasks for date:',
+            `${dateToFetch.getFullYear()}-${String(dateToFetch.getMonth() + 1).padStart(2, '0')}-${String(dateToFetch.getDate()).padStart(2, '0')}`
+        );
+
+        fetchCleaningTasks(dateToFetch);
     }, [selectedDate]);
+
+
 
     const generateCalendarDays = () => {
         const today = new Date();
+        today.setHours(0, 0, 0, 0); // Normalize today's date to start of day
         const days = [];
         const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
         for (let i = -3; i <= 3; i++) {
             const date = new Date(today);
             date.setDate(today.getDate() + i);
+            date.setHours(0, 0, 0, 0); // Ensure all dates are at midnight
 
             days.push({
                 date: date.getDate(),
@@ -41,6 +59,7 @@ export default function HomeScreen() {
                 hasTask: cleaningTasks.some(task => {
                     if (!task.checkOutDate) return false;
                     const taskDate = new Date(task.checkOutDate);
+                    taskDate.setHours(0, 0, 0, 0); // Normalize task date
                     return taskDate.toDateString() === date.toDateString();
                 }),
                 isToday: i === 0
@@ -50,7 +69,16 @@ export default function HomeScreen() {
     };
 
     const handleDateSelect = (fullDate) => {
-        setSelectedDate(new Date(fullDate));
+        // Create a new date object with time set to midnight to ensure consistency
+        const newSelectedDate = new Date(fullDate);
+        newSelectedDate.setHours(0, 0, 0, 0);
+
+        // Log date in a readable format
+        console.log('Selected date:',
+            `${newSelectedDate.getFullYear()}-${String(newSelectedDate.getMonth() + 1).padStart(2, '0')}-${String(newSelectedDate.getDate()).padStart(2, '0')}`
+        );
+
+        setSelectedDate(newSelectedDate);
     };
 
     const handleRefresh = () => {
@@ -167,7 +195,7 @@ export default function HomeScreen() {
                         <View style={styles.infoItem}>
                             <Ionicons name="cash-outline" size={16} color="#666" />
                             <Text style={styles.infoText}>
-                                ${item.propertyDetails?.price_cleaning || 0}
+                                {(item?.price / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}$
                             </Text>
                         </View>
 

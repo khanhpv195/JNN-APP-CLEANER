@@ -24,10 +24,18 @@ export const useReservation = () => {
             const localDate = new Date(date);
             localDate.setHours(0, 0, 0, 0);
             console.log('localDate', localDate);
-            const response = await cleanerApis.listTask({
-                date: localDate.toISOString()
-            });
 
+            // Format date as YYYY-MM-DD to avoid timezone issues
+            const year = localDate.getFullYear();
+            const month = String(localDate.getMonth() + 1).padStart(2, '0');
+            const day = String(localDate.getDate()).padStart(2, '0');
+            const formattedDate = `${year}-${month}-${day}`;
+
+            console.log('Formatted date for API:', formattedDate);
+
+            const response = await cleanerApis.listTask({
+                date: formattedDate
+            });
 
             if (response?.data?.length > 0) {
                 const tasks = response.data.map(task => ({

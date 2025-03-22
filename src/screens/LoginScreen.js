@@ -36,7 +36,7 @@ export default function LoginScreen({ navigation }) {
     const { theme } = useTheme();
 
     const dispatch = useDispatch();
-    const { loading, error } = useSelector((state) => state.auth);
+    const { loading, error, user } = useSelector((state) => state.auth);
 
     // Get device information and push token when component mounts
     useEffect(() => {
@@ -91,6 +91,14 @@ export default function LoginScreen({ navigation }) {
         getDeviceAndTokenInfo();
     }, []);
 
+    // Thêm useEffect để kiểm tra thông tin user sau khi đăng nhập
+    useEffect(() => {
+        if (user) {
+            console.log('User data after login:', user);
+            console.log('Bank account info:', user.bankAccount);
+        }
+    }, [user]);
+
     const handleLogin = () => {
         if (!email || !password) {
             Alert.alert('Error', 'Please enter both email and password');
@@ -108,7 +116,17 @@ export default function LoginScreen({ navigation }) {
             loginData.device = deviceInfo;
         }
 
-        dispatch(loginUser(loginData));
+        dispatch(loginUser(loginData))
+            .then((action) => {
+                // Kiểm tra kết quả sau khi đăng nhập
+                if (action.type === 'auth/loginUser/fulfilled') {
+                    console.log('Login successful, checking user data:', action.payload);
+                    // Kiểm tra thông tin bankAccount
+                    if (action.payload && !action.payload.bankAccount) {
+                        console.log('Bank account info missing, should redirect to AccountBank');
+                    }
+                }
+            });
     };
 
     // Create dynamic styles based on the current theme

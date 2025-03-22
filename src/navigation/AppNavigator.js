@@ -13,7 +13,8 @@ import LanguageSettingsScreen from '@/screens/LanguageSettingsScreen';
 import HomeScreen from '@/screens/HomeScreen';
 import TaskDetailsScreen from '../screens/TaskDetailsScreen';
 import PropertyProblemScreen from '../screens/PropertyProblemScreen';
-
+import AccountBankScreen from '../screens/AccountBankScreen';
+import CompletedChecklistScreen from '../screens/CompletedChecklistScreen';
 import { useTheme } from '@/shared/theme';
 
 const Stack = createStackNavigator();
@@ -40,6 +41,14 @@ function MainAppNavigator() {
                 options={{
                     title: t('navigation.home'),
                     tabBarIcon: ({ color }) => <Ionicons name="home" color={color} size={24} />,
+                }}
+            />
+            <Tab.Screen
+                name="AccountBank"
+                component={AccountBankScreen}
+                options={{
+                    title: t('navigation.accountBank'),
+                    tabBarIcon: ({ color }) => <Ionicons name="cash-outline" color={color} size={24} />,
                 }}
             />
             <Tab.Screen
@@ -84,9 +93,22 @@ export default function AppNavigator() {
                         }}
                     />
                     <Stack.Screen
+                        name="CompletedChecklist"
+                        component={CompletedChecklistScreen}
+                        options={{
+                            title: 'Completed Checklist',
+                            headerShown: true
+                        }}
+                    />
+                    <Stack.Screen
                         name="PropertyProblem"
                         component={PropertyProblemScreen}
                         options={{ headerShown: true, title: 'Property Problem' }}
+                    />
+                    <Stack.Screen
+                        name="AccountBank"
+                        component={AccountBankScreen}
+                        options={{ headerShown: false, title: 'Bank Information' }}
                     />
 
                     <Stack.Screen name="ThemeSettings" component={ThemeSettingsScreen} options={{ headerShown: false }} />

@@ -10,7 +10,8 @@
     "themeSettings": "Theme Settings",
     "languageSettings": "Language Settings",
     "pricingSettings": "Service Pricing",
-    "comingSoon": "Coming Soon"
+    "comingSoon": "Coming Soon",
+    "bankInformation": "Bank Information"
   },
   "navigation": {
     "home": "Home",
@@ -33,7 +34,8 @@
     "maintenance": "Maintenance",
     "task": "Task",
     "taskDetail": "Task Detail",
-    "cleaningSchedule": "Cleaning Schedule"
+    "cleaningSchedule": "Cleaning Schedule",
+    "accountBank": "Account Bank"
   },
   "languages": {
     "english": "English",

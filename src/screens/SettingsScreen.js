@@ -53,6 +53,10 @@ export default function SettingsScreen({ navigation }) {
     );
   };
 
+  const navigateToBankInformation = () => {
+    navigation.navigate('AccountBank');
+  };
+
   // Dynamic styles based on current theme
   const dynamicStyles = StyleSheet.create({
     container: {
@@ -178,6 +182,18 @@ export default function SettingsScreen({ navigation }) {
             <View style={dynamicStyles.settingRow}>
               <Ionicons name="color-palette-outline" size={24} color={theme.primary} style={{ marginRight: 16 }} />
               <Text style={dynamicStyles.settingLabel}>{t('settings.theme', 'Theme')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#777" />
+          </TouchableOpacity>
+
+          {/* Bank Information Option */}
+          <TouchableOpacity
+            style={dynamicStyles.settingItem}
+            onPress={navigateToBankInformation}
+          >
+            <View style={dynamicStyles.settingRow}>
+              <Ionicons name="cash-outline" size={24} color={theme.primary} style={{ marginRight: 16 }} />
+              <Text style={dynamicStyles.settingLabel}>{t('settings.bankInformation', 'Bank Information')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#777" />
           </TouchableOpacity>

@@ -10,7 +10,8 @@
     "themeSettings": "Configuración de tema",
     "languageSettings": "Configuración de idioma",
     "pricingSettings": "Precios de servicios",
-    "comingSoon": "Próximamente"
+    "comingSoon": "Próximamente",
+    "bankInformation": "Información de la cuenta"
   },
   "navigation": {
     "home": "Inicio",
@@ -22,14 +23,16 @@
     "notification": "Notificaciones",
     "details": "Detalles",
     "message": "Mensajes",
-    "search": "Buscar"
+    "search": "Buscar",
+    "accountBank": "Información de la cuenta"
   },
   "languages": {
     "english": "Inglés",
     "vietnamese": "Vietnamita",
     "spanish": "Español",
     "chinese": "Chino",
-    "japanese": "Japonés"
+    "japanese": "Japonés",
+    "accountBank": "Información de la cuenta"
   },
   "pricing": {
     "cleanerPrice": "Precio de limpieza ($ por hora)",
