@@ -125,37 +125,44 @@ export function useMessagesByReservation(reservationId, options = {}) {
     })
 }
 
-export function useSendMessage() {
+export const useSendMessage = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (params) => messageApis.sendMessage(params),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['messages'] });
+        mutationFn: async (messageData) => {
+            const { body, images = [], reservationId } = messageData;
+
+            // Chuẩn bị dữ liệu gửi lên API
+            const payload = {
+                body,
+                reservationId
+            };
+
+            // Nếu có ảnh, thêm vào payload
+            if (images && images.length > 0) {
+                payload.images = images;
+            }
+
+            // Gọi API gửi tin nhắn
+            return await messageApis.sendMessage(payload);
+        },
+        onSuccess: (data, variables) => {
+            // Làm mới danh sách tin nhắn sau khi gửi thành công
+            const { conversationId, reservationId } = variables;
+
+            if (conversationId) {
+                queryClient.invalidateQueries(['messages', 'conversation', conversationId]);
+            }
+
+            if (reservationId) {
+                queryClient.invalidateQueries(['messages', 'reservation', reservationId]);
+            }
+
+            queryClient.invalidateQueries(['messages']);
         }
     });
-}
+};
 
-export function useSendMessageWithImages() {
-    const queryClient = useQueryClient();
 
-    return useMutation({
-        mutationFn: ({ params, images }) => messageApis.sendMessageWithImages(params, images),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['messages'] });
-        }
-    });
-}
-
-export function useUploadMessageImages() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: (images) => messageApis.uploadMessageImages(images),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['messageImages'] });
-        }
-    });
-}
 
 export default messageApis

@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react"
-import listInventoryApis, { useUpdateInventory as useUpdateInventoryQuery } from "@/shared/api/inventoryApis"
+import listInventoryApis, {
+  useUpdateInventory as useUpdateInventoryQuery,
+  useCreateInventory as useCreateInventoryQuery
+} from "@/shared/api/inventoryApis"
 import { useQueryClient } from '@tanstack/react-query'
 
 export const useGetInventories = () => {
@@ -13,7 +16,6 @@ export const useGetInventories = () => {
       try {
         setIsLoading(true)
         const res = await listInventoryApis.getList()
-        console.log(res?.data?.inventory)
         setIsLoading(false)
         // if(!res.success) return
 
@@ -101,5 +103,54 @@ export const useUpdateInventory = () => {
   return {
     updateInventory,
     isUpdating: isLoading
+  };
+};
+
+export const useCreateInventory = () => {
+  const queryClient = useQueryClient();
+  const { mutateAsync, isLoading } = useCreateInventoryQuery();
+
+  const createInventory = async (data) => {
+    try {
+      // Make a copy of the data to avoid mutating the original
+      const payload = { ...data };
+
+      // Format price as a number if it's a string with currency format
+      if (payload.price && typeof payload.price === 'string') {
+        // Remove currency symbol and commas
+        const numericPrice = parseFloat(payload.price.replace(/[$,]/g, ''));
+        payload.price = numericPrice;
+      }
+
+      // Ensure image URL is properly formatted and available
+      if (payload.image) {
+        console.log('Using image URL:', payload.image);
+        // Make sure image URL is a string and starts with http
+        if (typeof payload.image !== 'string' || !payload.image.startsWith('http')) {
+          console.warn('Invalid image URL format - removing from payload');
+          delete payload.image;
+        }
+      } else {
+        // Remove image property if null to avoid backend issues
+        delete payload.image;
+      }
+
+      // Send the data to the API
+      console.log('Creating inventory with data:', payload);
+      const result = await mutateAsync(payload);
+
+      // Invalidate and refetch inventories list
+      queryClient.invalidateQueries(['inventory']);
+
+      return result;
+    } catch (error) {
+      console.error('Error creating inventory:', error);
+      throw error;
+    }
+  };
+
+  return {
+    createInventory,
+    isCreating: isLoading
   };
 };

@@ -68,7 +68,8 @@
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@babel/plugin-transform-private-methods": "^7.25.9",
     "@babel/runtime": "^7.26.0",
-    "metro-react-native-babel-preset": "^0.77.0"
+    "metro-react-native-babel-preset": "^0.77.0",
+    "typescript": "^5.3.3"
   },
   "private": true
 }

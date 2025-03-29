@@ -8,20 +8,15 @@ import {
     TextInput,
     Image,
     Alert,
-    ActivityIndicator,
-    Platform
+    ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { useReservation } from '../hooks/useReservation';
-const MAX_IMAGE_SIZE = 1; // Maximum size in MB
-const COMPRESSION_OPTIONS = {
-    maxSizeMB: MAX_IMAGE_SIZE,
-    maxWidthOrHeight: 1920,
-    useWebWorker: true,
-    fileType: 'image/jpeg',
-    initialQuality: 0.7,
-};
+import {
+    handleImagePicker,
+    createImageFormData
+} from '@/utils/imageUtils';
+
 export default function PropertyProblemScreen({ route, navigation }) {
     const [taskId, setTaskId] = useState(route?.params?.taskId);
     const [propertyId, setPropertyId] = useState(route?.params?.propertyId);
@@ -29,6 +24,7 @@ export default function PropertyProblemScreen({ route, navigation }) {
     const [newProblem, setNewProblem] = useState({ description: '', imageUrl: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [imageLoading, setImageLoading] = useState(false);
     const { updateProperty, uploadImage } = useReservation();
 
     useEffect(() => {
@@ -52,111 +48,21 @@ export default function PropertyProblemScreen({ route, navigation }) {
         });
     }, []);
 
-    const handleImagePick = async () => {
-        try {
-            if (Platform.OS === 'web') {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'image/*';
-                input.style.display = 'none';
-
-                input.onchange = async (e) => {
+    const handleImageSelection = () => {
+        handleImagePicker({
+            setImageLoading,
+            setFormData: async (callback) => {
+                // When image is selected from picker
+                const updatedData = callback({});
+                if (updatedData.image) {
                     try {
-                        setIsUploading(true);
-                        const file = e.target.files[0];
-                        if (file) {
-                            console.log('Selected file size:', file.size / 1024 / 1024, 'MB');
-
-                            let fileToUpload = file;
-                            if (file.size > MAX_IMAGE_SIZE * 1024 * 1024) {
-                                fileToUpload = await compressImage(file);
-                            }
-
-                            const formData = new FormData();
-                            formData.append('files', fileToUpload);
-                            console.log('Debug: Uploading file from web:', fileToUpload.name);
-
-                            const response = await uploadImage(formData);
-                            handleUploadResponse(response);
-                        }
+                        await handleImageSelected({ uri: updatedData.image });
                     } catch (error) {
-                        console.error('Web upload error:', error);
-                        window.alert('Failed to upload image');
-                    } finally {
-                        setIsUploading(false);
+                        console.error('Failed to process selected image:', error);
                     }
-                };
-
-                document.body.appendChild(input);
-                input.click();
-                document.body.removeChild(input);
-            } else {
-                // Mobile version
-                const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-                const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-                if (cameraStatus !== 'granted' && libraryStatus !== 'granted') {
-                    window.alert('Camera and photo library permissions are required');
-                    return;
                 }
-
-                Alert.alert(
-                    'Select Image',
-                    'Choose image source',
-                    [
-                        {
-                            text: 'Take Photo',
-                            onPress: async () => {
-                                try {
-                                    const result = await ImagePicker.launchCameraAsync({
-                                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                                        allowsEditing: true,
-                                        aspect: [4, 3],
-                                        quality: 0.5,
-                                        maxWidth: 1920,
-                                        maxHeight: 1920,
-                                    });
-
-                                    if (!result.canceled && result.assets && result.assets[0]) {
-                                        await handleImageSelected(result.assets[0]);
-                                    }
-                                } catch (err) {
-                                    console.error('Camera error:', err);
-                                    window.alert('Failed to take photo');
-                                }
-                            },
-                        },
-                        {
-                            text: 'Choose from Library',
-                            onPress: async () => {
-                                try {
-                                    const result = await ImagePicker.launchImageLibraryAsync({
-                                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                                        allowsEditing: true,
-                                        aspect: [4, 3],
-                                        quality: 0.5,
-                                        maxWidth: 1920,
-                                        maxHeight: 1920,
-                                    });
-
-                                    if (!result.canceled && result.assets && result.assets[0]) {
-                                        await handleImageSelected(result.assets[0]);
-                                    }
-                                } catch (err) {
-                                    console.error('Library error:', err);
-                                    window.alert('Failed to pick image from library');
-                                }
-                            },
-                        },
-                        { text: 'Cancel', style: 'cancel' },
-                    ],
-                    { cancelable: true }
-                );
-            }
-        } catch (error) {
-            console.error('Image picker error:', error);
-            window.alert('Failed to open image picker');
-        }
+            },
+        });
     };
 
     const handleUploadResponse = (response) => {
@@ -178,19 +84,14 @@ export default function PropertyProblemScreen({ route, navigation }) {
             }));
         } else {
             console.error('Invalid upload response:', response);
-            window.alert('Failed to get image URL from server');
+            Alert.alert('Error', 'Failed to get image URL from server');
         }
     };
 
     const handleImageSelected = async (imageAsset) => {
         try {
             setIsUploading(true);
-            const formData = new FormData();
-            formData.append('files', {
-                uri: imageAsset.uri,
-                type: 'image/jpeg',
-                name: 'image.jpg'
-            });
+            const formData = createImageFormData(imageAsset.uri);
 
             console.log('Uploading image...');
             const response = await uploadImage(formData);
@@ -200,36 +101,44 @@ export default function PropertyProblemScreen({ route, navigation }) {
 
         } catch (error) {
             console.error('Upload error:', error);
-            window.alert('Failed to upload image');
+            Alert.alert('Error', 'Failed to upload image');
         } finally {
             setIsUploading(false);
+            setImageLoading(false);
         }
     };
 
     const addProblem = () => {
         if (!newProblem.description.trim()) {
-            window.alert('Please enter a description');
+            Alert.alert('Error', 'Please enter a description');
             return;
         }
 
         if (!newProblem.imageUrl) {
-            window.alert('Please select an image');
+            Alert.alert('Error', 'Please select an image');
             return;
         }
 
-        setProblems(prev => [...prev, {
-            id: Date.now().toString(),
+        // Create a new problem in the same format as the existing problems
+        const newProblemItem = {
+            date: new Date().toISOString(),
             description: newProblem.description,
-            imageUrl: newProblem.imageUrl,
-            timestamp: new Date().toISOString()
-        }]);
+            images: [newProblem.imageUrl],  // Put the imageUrl in an array to match existing format
+            status: 'PENDING',
+            completedAt: null,
+            // Add these fields to ensure compatibility with both displays
+            id: Date.now().toString(),
+            timestamp: new Date().toISOString(),
+            imageUrl: newProblem.imageUrl
+        };
 
+        setProblems(prev => [...prev, newProblemItem]);
         setNewProblem({ description: '', imageUrl: '' });
     };
 
     const handleSave = async () => {
         if (!taskId || !propertyId) {
-            window.alert('Missing required task or property information');
+            Alert.alert('Error', 'Missing required task or property information');
             return;
         }
 
@@ -244,7 +153,6 @@ export default function PropertyProblemScreen({ route, navigation }) {
                     images: [problem.imageUrl],
                     status: 'PENDING',
                     completedAt: null,
-
                 }))
             };
 
@@ -253,14 +161,14 @@ export default function PropertyProblemScreen({ route, navigation }) {
             const response = await updateProperty(propertyId, payload);
 
             if (response?.success) {
-                window.alert('Problems saved successfully');
+                Alert.alert('Success', 'Problems saved successfully');
                 navigation.goBack();
             } else {
                 throw new Error(response?.message || 'Failed to save problems');
             }
         } catch (error) {
             console.error('Error saving problems:', error);
-            window.alert(error.message || 'Failed to save problems');
+            Alert.alert('Error', error.message || 'Failed to save problems');
         } finally {
             setIsSubmitting(false);
         }
@@ -269,10 +177,10 @@ export default function PropertyProblemScreen({ route, navigation }) {
     return (
         <View style={styles.container}>
             <ScrollView style={styles.problemsList}>
-                {problems.map((problem) => (
-                    <View key={problem.id} style={styles.problemItem}>
+                {problems.map((problem, index) => (
+                    <View key={problem.id || index} style={styles.problemItem}>
                         <Image
-                            source={{ uri: problem.imageUrl }}
+                            source={{ uri: problem.imageUrl || (problem.images && problem.images[0]) }}
                             style={styles.problemImage}
                             resizeMode="cover"
                         />
@@ -280,19 +188,19 @@ export default function PropertyProblemScreen({ route, navigation }) {
                             <Text style={styles.problemDescription}>
                                 {problem.description}
                             </Text>
-                            <Text style={styles.timestamp}>
-                                {new Date(problem.timestamp).toLocaleString()}
-                            </Text>
+                            <View style={styles.problemFooter}>
+                                <Text style={styles.timestamp}>
+                                    {new Date(problem.timestamp || problem.date).toLocaleString()}
+                                </Text>
+                                <View style={[styles.statusBadge,
+                                problem.status === 'PENDING' && styles.pendingBadge,
+                                problem.status === 'INPROCESS' && styles.inprocessBadge,
+                                problem.status === 'COMPLETED' && styles.completedBadge
+                                ]}>
+                                    <Text style={styles.statusText}>{problem.status || 'PENDING'}</Text>
+                                </View>
+                            </View>
                         </View>
-                        <TouchableOpacity
-                            onPress={() => {
-                                const newProblems = problems.filter(p => p.id !== problem.id);
-                                setProblems(newProblems);
-                            }}
-                            style={styles.removeButton}
-                        >
-                            <Ionicons name="trash-outline" size={24} color="#FF5252" />
-                        </TouchableOpacity>
                     </View>
                 ))}
             </ScrollView>
@@ -308,10 +216,10 @@ export default function PropertyProblemScreen({ route, navigation }) {
                     />
                     <TouchableOpacity
                         style={styles.cameraButton}
-                        onPress={handleImagePick}
-                        disabled={isUploading}
+                        onPress={handleImageSelection}
+                        disabled={isUploading || imageLoading}
                     >
-                        {isUploading ? (
+                        {isUploading || imageLoading ? (
                             <ActivityIndicator color="#666" />
                         ) : newProblem.imageUrl ? (
                             <View>
@@ -462,4 +370,31 @@ const styles = StyleSheet.create({
     disabledButton: {
         opacity: 0.5,
     },
-}); 
+    problemFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 4,
+    },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    pendingBadge: {
+        backgroundColor: '#FFF9C4',
+    },
+    inprocessBadge: {
+        backgroundColor: '#BBDEFB',
+    },
+    completedBadge: {
+        backgroundColor: '#C8E6C9',
+    },
+    statusText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+});

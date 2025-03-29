@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '@env';
-import { navigationRef } from '../../navigation/NavigationService';
+import NavigationService from '@/navigation/NavigationService';
+import { store } from '@/redux/store';
+import { handleSessionExpired } from '@/redux/slices/authSlice';
 
 // Ensure GATEWAY_URL doesn't end with a slash
 const GATEWAY_URL = API_URL;
@@ -28,9 +30,6 @@ const makeRequest = async (method, url, params = {}) => {
 
   // Get access token from AsyncStorage
   const tokenString = await AsyncStorage.getItem('accessToken');
-
-
-
 
   const headers = {
     'Content-Type': 'application/json',
@@ -63,24 +62,24 @@ const makeRequest = async (method, url, params = {}) => {
       throw new Error('Failed to parse server response');
     }
 
-    // Check specifically for token expiration
-    if (response.status === 401 && (data?.message === 'Token expired.' || data?.message?.includes('expired'))) {
-      console.log('Token expired, clearing session and redirecting to login');
-      // Clear token
-      await AsyncStorage.removeItem('accessToken');
-      // Navigate to login screen
-      navigationRef.current?.navigate('Login');
-      throw new Error('Session has expired. Please login again.');
-    }
+    // Get possible error message
+    const errorMessage = data?.message || data?.error?.message || '';
 
-    // Check header status
-    if (response.status === 401) {
+    // Check specifically for token expiration or access denied errors
+    if (response.status === 401 ||
+      errorMessage.includes('Token expired.') ||
+      errorMessage.includes('expired') ||
+      errorMessage.includes('access denied')) {
+      console.log('Authentication error, clearing session and redirecting to login');
+      // Dispatch action to update Redux state
+      store.dispatch(handleSessionExpired());
+      // Use reset instead of navigate to prevent back navigation
+      NavigationService.reset('Login');
       throw new Error('Session has expired. Please login again.');
     }
 
     if (!response.ok) {
       // Enhanced error reporting
-      const errorMessage = data?.message || data?.error?.message || 'Request failed';
       console.error('API Error:', {
         status: response.status,
         statusText: response.statusText,
@@ -96,6 +95,18 @@ const makeRequest = async (method, url, params = {}) => {
     };
   } catch (error) {
     console.error('Request failed:', error);
+
+    // Check if error message contains session expired or similar auth errors
+    const errorMsg = error.message || '';
+    if (errorMsg.includes('Session has expired') ||
+      errorMsg.includes('Please login again') ||
+      errorMsg.includes('access denied')) {
+      console.log('Authentication error in catch block, redirecting to login');
+      // Dispatch action to update Redux state
+      store.dispatch(handleSessionExpired());
+      NavigationService.reset('Login');
+    }
+
     throw error;
   }
 };
@@ -135,66 +146,24 @@ export const DELETE = async (endpoint, params = {}) => {
     ...otherParams,
   });
 };
-
 // Specialized function for file uploads
-export const UPLOAD = async (endpoint, formData) => {
+export const UPLOAD = async (endpoint, formData, headers) => {
   const url = generateApiUrl({ endpoint });
   const tokenString = await AsyncStorage.getItem('accessToken');
 
-  try {
-    console.log('Uploading to:', url);
+  console.log('Uploading to:', url);
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        ...(tokenString && { 'user-access-token': tokenString })
-      },
-      credentials: 'include',
-      mode: 'cors',
-      body: formData
-    });
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      ...(tokenString && { 'user-access-token': tokenString })
+    },
+    credentials: 'include',
+    mode: 'cors',
+    body: formData
+  });
 
-    // Safely parse JSON and handle non-JSON responses for upload
-    let data;
-    try {
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        console.warn('Upload: Non-JSON response received:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
-        data = { success: false, message: 'Invalid upload response format', raw: text.substring(0, 200) };
-      }
-    } catch (parseError) {
-      console.error('Error parsing upload response:', parseError);
-      throw new Error('Failed to parse upload response');
-    }
-
-    // Check specifically for token expiration
-    if (response.status === 401 && (data?.message === 'Token expired.' || data?.message?.includes('expired'))) {
-      console.log('Token expired during upload, clearing session and redirecting to login');
-      await AsyncStorage.removeItem('accessToken');
-      navigationRef.current?.navigate('Login');
-      throw new Error('Session has expired. Please login again.');
-    }
-
-    // Check status
-    if (!response.ok) {
-      const errorMessage = data?.message || data?.error?.message || 'Upload failed';
-      console.error('Upload API Error:', {
-        status: response.status,
-        statusText: response.statusText,
-        endpoint: url,
-        message: errorMessage
-      });
-      throw new Error(errorMessage);
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('Upload Error:', error);
-    throw error;
-  }
+  return response.json();
 };
 
 

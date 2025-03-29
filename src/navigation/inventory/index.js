@@ -1,0 +1,34 @@
+import { createStackNavigator } from '@react-navigation/stack';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { useTranslation } from 'react-i18next';
+
+import InventoryListScreen from '../../screens/InventoryListScreen';
+import InventoryCreateScreen from '../../screens/InventoryCreateScreen';
+
+const ProjectStack = createStackNavigator();
+
+export default function InventoryNavigator() {
+    const { t } = useTranslation();
+
+    return (
+        <ProjectStack.Navigator screenOptions={{ headerShown: false }}>
+            <ProjectStack.Screen
+                name="inventory"
+                component={InventoryListScreen}
+                options={({ navigation }) => ({
+                    tabBarIcon: ({ color }) => <Icon name="albums" color={color} size={24} />,
+                    title: t('navigation.inventory'),
+                    headerShown: false,
+                })}
+            />
+
+            <ProjectStack.Screen
+                name="create_inventory"
+                component={InventoryCreateScreen}
+                options={({ navigation }) => ({
+                    headerShown: false,
+                })}
+            />
+        </ProjectStack.Navigator>
+    );
+}

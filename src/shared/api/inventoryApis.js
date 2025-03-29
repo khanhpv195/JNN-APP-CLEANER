@@ -15,6 +15,10 @@ const listInventoryApis = {
         });
     },
 
+    create: (payload) => {
+        return POST('/createInventory', { body: payload });
+    },
+
     update: (data) => {
         return PUT('/updateInventory', { body: data });
     },
@@ -74,6 +78,17 @@ export function useInventoryDetail(inventoryId, options = {}) {
         {
             ...options,
             queryFn: () => listInventoryApis.get(inventoryId)
+        }
+    );
+}
+
+export function useCreateInventory() {
+    return useUpdateData(
+        '/inventory/createInventory',
+        ['inventory'],
+        'POST',
+        async (payload) => {
+            return listInventoryApis.create(payload);
         }
     );
 }

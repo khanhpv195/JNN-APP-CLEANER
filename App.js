@@ -35,6 +35,30 @@ function AppContent() {
     const initializeApp = async () => {
       // Check login status
       dispatch(checkAuthState());
+
+      // Set up notifications
+      if (Platform.OS === 'android' || Platform.OS === 'ios') {
+        try {
+          if (!expoPushToken) {
+            const token = await registerForPushNotificationsAsync();
+            setExpoPushToken(token);
+          }
+
+          if (!notificationListeners.current) {
+            notificationListeners.current = setupNotificationListeners(
+              notification => {
+                setNotification(notification);
+              },
+              response => {
+                const data = response.notification.request.content.data;
+                NavigationService?.navigate(data.screen, data.params);
+              }
+            );
+          }
+        } catch (error) {
+          console.log('Error setting up notifications:', error);
+        }
+      }
     };
 
     initializeApp();
@@ -45,51 +69,8 @@ function AppContent() {
         removeNotificationListeners(notificationListeners.current);
       }
     };
-  }, [dispatch]);  // Chỉ phụ thuộc vào dispatch
+  }, [dispatch]);
 
-  // Tạo một useEffect riêng để kiểm tra bankAccount mỗi khi user hoặc isLoggedIn thay đổi
-  useEffect(() => {
-    if (isLoggedIn && user) {
-      console.log('User data:', JSON.stringify(user));
-
-      // Check bankAccount in detail
-      console.log('Bank account value:', user.bankAccount);
-      console.log('Bank account type:', typeof user.bankAccount);
-      console.log('Is array?', Array.isArray(user.bankAccount));
-
-      if (typeof user.bankAccount === 'object' && !Array.isArray(user.bankAccount)) {
-        console.log('Object keys:', Object.keys(user.bankAccount));
-      }
-
-      // Kiểm tra xem bankAccount có tồn tại và có dữ liệu không
-      const hasBankAccount = user.bankAccount &&
-        (typeof user.bankAccount === 'object' &&
-          ((Array.isArray(user.bankAccount) ? user.bankAccount.length > 0 : Object.keys(user.bankAccount).length > 0)));
-
-      console.log('Final check - Bank account exists:', hasBankAccount);
-
-      if (!hasBankAccount) {
-        console.log('Bank account missing or empty, redirecting to AccountBank');
-        navigationRef.current?.navigate('AccountBank');
-      } else {
-        console.log('Bank account exists, no redirect needed');
-      }
-    }
-  }, [isLoggedIn, user]);  // Phụ thuộc vào isLoggedIn và user để kiểm tra mỗi khi thông tin thay đổi
-
-  // Tạo một useEffect riêng để xử lý lưu token khi user đăng nhập
-  useEffect(() => {
-    const saveTokenToBackend = async () => {
-      if (isLoggedIn && user && expoPushToken) {
-        // Chỉ log một lần khi cần thiết
-        console.log('Need to save token to backend:', expoPushToken);
-        // Gọi API để lưu token
-        // await saveTokenToBackend(user.id, expoPushToken);
-      }
-    };
-
-    saveTokenToBackend();
-  }, [isLoggedIn, user, expoPushToken]);  // Chỉ chạy khi một trong các giá trị này thay đổi
 
   if (loading) {
     return null;
@@ -105,6 +86,8 @@ function AppContent() {
 
 // Main component
 export default function App() {
+
+
   return (
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>

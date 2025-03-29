@@ -7,6 +7,7 @@ import cleanerApis from '../shared/api/cleanerApis';
  */
 export const useReservation = () => {
     const [loading, setLoading] = useState(false);
+    const [fetching, setFetching] = useState(false);
     const [error, setError] = useState(null);
     const [cleaningTasks, setCleaningTasks] = useState([]);
 
@@ -15,11 +16,10 @@ export const useReservation = () => {
      * @param {Date} date - Selected date to fetch tasks for
      */
     const fetchCleaningTasks = async (date = new Date()) => {
-        setLoading(true);
+        setFetching(true);
         setError(null);
 
         try {
-            setLoading(false);
             // Fix timezone offset by setting time to start of day in local timezone
             const localDate = new Date(date);
             localDate.setHours(0, 0, 0, 0);
@@ -71,9 +71,10 @@ export const useReservation = () => {
             }
             return response
         } catch (error) {
-            setLoading(false);
             setError(error.message || 'An error occurred while fetching tasks');
             throw error;
+        } finally {
+            setFetching(false);
         }
     };
 
@@ -172,6 +173,7 @@ export const useReservation = () => {
     return {
         cleaningTasks,
         loading,
+        fetching,
         error,
         clearError,
         fetchCleaningTasks,

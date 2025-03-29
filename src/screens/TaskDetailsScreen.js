@@ -5,13 +5,26 @@ import ChecklistModal from '../components/ChecklistModal';
 import { format } from 'date-fns';
 import { useReservation } from '../hooks/useReservation';
 import { STATUS } from '../constants/status';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function TaskDetailsScreen({ route, navigation }) {
     const [showChecklist, setShowChecklist] = useState(false);
     const [task, setTask] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const { loading, error, getTaskDetails, updateTask } = useReservation();
+    const { loading, error, getTaskDetails, fetching, setFetching, updateTask } = useReservation();
     const [taskId, setTaskId] = useState(null);
+
+
+    const refreshData = () => {
+        fetchTaskDetails();
+    };
+
+    useFocusEffect(
+        React.useCallback(() => {
+            refreshData();
+        }, [])
+    );
+
 
     useEffect(() => {
         navigation.setOptions({
@@ -36,9 +49,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 return;
             }
 
-            console.log('Fetching task details for ID:', route.params.taskId);
             const response = await getTaskDetails(route.params.taskId);
-            console.log('Task details response:', response);
             setTask(response);
 
         } catch (error) {
@@ -123,19 +134,14 @@ export default function TaskDetailsScreen({ route, navigation }) {
 
         const navigationParams = {
             taskId: taskId,
-            propertyId: task?.propertyId
+            propertyId: task?.propertyId,
+            problems: task?.propertyProblems
         };
-
-        // Log navigation params
-        console.log('TaskDetailsScreen - Navigation params:', navigationParams);
 
         navigation.navigate('PropertyProblem', navigationParams);
     };
 
     useEffect(() => {
-        console.log('TaskDetailsScreen - Full route:', route);
-        console.log('TaskDetailsScreen - Route params:', route.params);
-
         if (!route.params?.taskId) {
             console.error('TaskDetailsScreen - No taskId in route params');
             window.alert('Missing required task information');
@@ -269,24 +275,12 @@ export default function TaskDetailsScreen({ route, navigation }) {
                         <Text style={styles.detailText}>Property Problems</Text>
                         <View style={styles.problemBadge}>
                             <Text style={styles.problemCount}>
-                                {task?.completionDetails?.issues?.length || 0}
+                                {task?.propertyProblems?.length || 0}
                             </Text>
                         </View>
                         <Ionicons name="chevron-forward" size={24} color="#666" />
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.detailItem}
-                        onPress={handlePropertyProblem}
-                    >
-                        <Ionicons name="alert-circle" size={24} color="#666" />
-                        <Text style={styles.detailText}>Inventory</Text>
-                        <View style={styles.problemBadge}>
-                            <Text style={styles.problemCount}>
-                                {task?.completionDetails?.issues?.length || 0}
-                            </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={24} color="#666" />
-                    </TouchableOpacity>
+
 
                     {renderCompletedChecklist()}
                     {/* Accept Button - only show when status is PENDING */}

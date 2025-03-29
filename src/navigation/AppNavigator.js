@@ -16,6 +16,8 @@ import PropertyProblemScreen from '../screens/PropertyProblemScreen';
 import AccountBankScreen from '../screens/AccountBankScreen';
 import CompletedChecklistScreen from '../screens/CompletedChecklistScreen';
 import { useTheme } from '@/shared/theme';
+import InventoryNavigator from './inventory';
+
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -44,6 +46,15 @@ function MainAppNavigator() {
                 }}
             />
             <Tab.Screen
+                name="Inventory"
+                component={InventoryNavigator}
+                options={{
+                    title: t('navigation.inventory', 'Inventory'),
+                    tabBarIcon: ({ color }) => <Ionicons name="list" color={color} size={24} />,
+                }}
+            />
+
+            <Tab.Screen
                 name="AccountBank"
                 component={AccountBankScreen}
                 options={{
@@ -51,6 +62,7 @@ function MainAppNavigator() {
                     tabBarIcon: ({ color }) => <Ionicons name="cash-outline" color={color} size={24} />,
                 }}
             />
+
             <Tab.Screen
                 name="Settings"
                 component={SettingsScreen}

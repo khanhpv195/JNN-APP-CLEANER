@@ -1,16 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useReservation } from '../hooks/useReservation';
 import { STATUS } from '../constants/status';
+
+
+
 export default function HomeScreen() {
     const navigation = useNavigation();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [calendarDays, setCalendarDays] = useState([]);
-    const { cleaningTasks, loading, error, updateTask, fetchCleaningTasks } = useReservation();
+    const { cleaningTasks, loading, error, updateTask, fetchCleaningTasks, setFetching } = useReservation();
 
-    console.log('cleaningTasks', cleaningTasks);
+    const refreshData = () => {
+        console.log('Refreshing data...');
+        // Force refresh by using a new Date object
+        const dateToFetch = new Date(selectedDate);
+        dateToFetch.setHours(0, 0, 0, 0);
+        fetchCleaningTasks(dateToFetch);
+        generateCalendarDays();
+    };
+
+    useFocusEffect(
+        React.useCallback(() => {
+            console.log('Screen focused, refreshing data');
+            refreshData();
+
+            return () => {
+                console.log('Screen unfocused');
+            };
+        }, [selectedDate]) // Add selectedDate as dependency to refresh with current date
+    );
+
+
     // Add this function to filter tasks by selected date
     const getFilteredTasks = () => {
         return cleaningTasks.filter(task => {
@@ -82,14 +105,16 @@ export default function HomeScreen() {
     };
 
     const handleRefresh = () => {
-        fetchCleaningTasks();
+        console.log('Manual refresh triggered');
+        refreshData();
     };
 
     const handleTaskPress = (task) => {
         console.log('Selected task:', task);
         navigation.navigate('TaskDetail', {
             taskId: task._id,
-            task: task
+            task: task,
+            refreshOnReturn: true
         });
     };
 
@@ -235,13 +260,13 @@ export default function HomeScreen() {
         <View style={styles.container}>
             {renderCalendar()}
             <FlatList
-                // Change data to use filtered tasks
                 data={getFilteredTasks()}
                 renderItem={renderTask}
-                keyExtractor={item => item.id}
+                keyExtractor={item => item._id || item.id}
                 contentContainerStyle={styles.listContent}
                 refreshing={loading}
                 onRefresh={handleRefresh}
+                extraData={cleaningTasks}
             />
         </View>
     );
