@@ -8,7 +8,10 @@ import {
     TextInput,
     Image,
     Alert,
-    ActivityIndicator
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    Keyboard
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useReservation } from '../hooks/useReservation';
@@ -25,6 +28,8 @@ export default function PropertyProblemScreen({ route, navigation }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [imageLoading, setImageLoading] = useState(false);
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
+
     const { updateProperty, uploadImage } = useReservation();
 
     useEffect(() => {
@@ -32,6 +37,26 @@ export default function PropertyProblemScreen({ route, navigation }) {
             setTaskId(route.params.taskId);
         }
     }, [route]);
+
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener(
+            'keyboardDidShow',
+            () => {
+                setKeyboardVisible(true);
+            }
+        );
+        const keyboardDidHideListener = Keyboard.addListener(
+            'keyboardDidHide',
+            () => {
+                setKeyboardVisible(false);
+            }
+        );
+
+        return () => {
+            keyboardDidHideListener.remove();
+            keyboardDidShowListener.remove();
+        };
+    }, []);
 
     useEffect(() => {
         navigation.setOptions({
@@ -134,6 +159,7 @@ export default function PropertyProblemScreen({ route, navigation }) {
 
         setProblems(prev => [...prev, newProblemItem]);
         setNewProblem({ description: '', imageUrl: '' });
+        Keyboard.dismiss();
     };
 
     const handleSave = async () => {
@@ -175,96 +201,109 @@ export default function PropertyProblemScreen({ route, navigation }) {
     };
 
     return (
-        <View style={styles.container}>
-            <ScrollView style={styles.problemsList}>
-                {problems.map((problem, index) => (
-                    <View key={problem.id || index} style={styles.problemItem}>
-                        <Image
-                            source={{ uri: problem.imageUrl || (problem.images && problem.images[0]) }}
-                            style={styles.problemImage}
-                            resizeMode="cover"
-                        />
-                        <View style={styles.problemDetails}>
-                            <Text style={styles.problemDescription}>
-                                {problem.description}
-                            </Text>
-                            <View style={styles.problemFooter}>
-                                <Text style={styles.timestamp}>
-                                    {new Date(problem.timestamp || problem.date).toLocaleString()}
+        <KeyboardAvoidingView
+            style={styles.mainContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
+            <View style={styles.container}>
+                <ScrollView style={styles.problemsList}>
+                    {problems.map((problem, index) => (
+                        <View key={problem.id || index} style={styles.problemItem}>
+                            <Image
+                                source={{ uri: problem.imageUrl || (problem.images && problem.images[0]) }}
+                                style={styles.problemImage}
+                                resizeMode="cover"
+                            />
+                            <View style={styles.problemDetails}>
+                                <Text style={styles.problemDescription}>
+                                    {problem.description}
                                 </Text>
-                                <View style={[styles.statusBadge,
-                                problem.status === 'PENDING' && styles.pendingBadge,
-                                problem.status === 'INPROCESS' && styles.inprocessBadge,
-                                problem.status === 'COMPLETED' && styles.completedBadge
-                                ]}>
-                                    <Text style={styles.statusText}>{problem.status || 'PENDING'}</Text>
+                                <View style={styles.problemFooter}>
+                                    <Text style={styles.timestamp}>
+                                        {new Date(problem.timestamp || problem.date).toLocaleString()}
+                                    </Text>
+                                    <View style={[styles.statusBadge,
+                                    problem.status === 'PENDING' && styles.pendingBadge,
+                                    problem.status === 'INPROCESS' && styles.inprocessBadge,
+                                    problem.status === 'COMPLETED' && styles.completedBadge
+                                    ]}>
+                                        <Text style={styles.statusText}>{problem.status || 'PENDING'}</Text>
+                                    </View>
                                 </View>
                             </View>
                         </View>
-                    </View>
-                ))}
-            </ScrollView>
+                    ))}
 
-            <View style={styles.addProblemSection}>
-                <View style={styles.inputContainer}>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Describe the problem..."
-                        value={newProblem.description}
-                        onChangeText={(text) => setNewProblem(prev => ({ ...prev, description: text }))}
-                        multiline
-                    />
+                    {keyboardVisible && Platform.OS === 'android' &&
+                        <View style={{ height: 300 }} />
+                    }
+                </ScrollView>
+
+                <View style={styles.addProblemSection}>
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Describe the problem..."
+                            value={newProblem.description}
+                            onChangeText={(text) => setNewProblem(prev => ({ ...prev, description: text }))}
+                            multiline
+                        />
+                        <TouchableOpacity
+                            style={styles.cameraButton}
+                            onPress={handleImageSelection}
+                            disabled={isUploading || imageLoading}
+                        >
+                            {isUploading || imageLoading ? (
+                                <ActivityIndicator color="#666" />
+                            ) : newProblem.imageUrl ? (
+                                <View>
+                                    <Image
+                                        source={{ uri: newProblem.imageUrl }}
+                                        style={styles.previewImage}
+                                    />
+                                    <TouchableOpacity
+                                        style={styles.removeImageButton}
+                                        onPress={() => setNewProblem(prev => ({ ...prev, imageUrl: '' }))}
+                                    >
+                                        <Ionicons name="close-circle" size={20} color="#FF5252" />
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                <Ionicons name="camera" size={24} color="#666" />
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
                     <TouchableOpacity
-                        style={styles.cameraButton}
-                        onPress={handleImageSelection}
-                        disabled={isUploading || imageLoading}
+                        style={[styles.addButton, (!newProblem.description || !newProblem.imageUrl) && styles.disabledButton]}
+                        onPress={addProblem}
+                        disabled={!newProblem.description || !newProblem.imageUrl}
                     >
-                        {isUploading || imageLoading ? (
-                            <ActivityIndicator color="#666" />
-                        ) : newProblem.imageUrl ? (
-                            <View>
-                                <Image
-                                    source={{ uri: newProblem.imageUrl }}
-                                    style={styles.previewImage}
-                                />
-                                <TouchableOpacity
-                                    style={styles.removeImageButton}
-                                    onPress={() => setNewProblem(prev => ({ ...prev, imageUrl: '' }))}
-                                >
-                                    <Ionicons name="close-circle" size={20} color="#FF5252" />
-                                </TouchableOpacity>
-                            </View>
+                        <Text style={styles.addButtonText}>Add Problem</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.saveButton, (isSubmitting || problems.length === 0) && styles.disabledButton]}
+                        onPress={handleSave}
+                        disabled={isSubmitting || problems.length === 0}
+                    >
+                        {isSubmitting ? (
+                            <ActivityIndicator color="#fff" />
                         ) : (
-                            <Ionicons name="camera" size={24} color="#666" />
+                            <Text style={styles.saveButtonText}>Save All Problems</Text>
                         )}
                     </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity
-                    style={[styles.addButton, (!newProblem.description || !newProblem.imageUrl) && styles.disabledButton]}
-                    onPress={addProblem}
-                    disabled={!newProblem.description || !newProblem.imageUrl}
-                >
-                    <Text style={styles.addButtonText}>Add Problem</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.saveButton, (isSubmitting || problems.length === 0) && styles.disabledButton]}
-                    onPress={handleSave}
-                    disabled={isSubmitting || problems.length === 0}
-                >
-                    {isSubmitting ? (
-                        <ActivityIndicator color="#fff" />
-                    ) : (
-                        <Text style={styles.saveButtonText}>Save All Problems</Text>
-                    )}
-                </TouchableOpacity>
             </View>
-        </View>
+        </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
+    mainContainer: {
+        flex: 1,
+    },
     container: {
         flex: 1,
         backgroundColor: '#f5f5f5',
@@ -323,6 +362,7 @@ const styles = StyleSheet.create({
         padding: 12,
         marginRight: 12,
         fontSize: 16,
+        maxHeight: 100,
     },
     cameraButton: {
         width: 60,

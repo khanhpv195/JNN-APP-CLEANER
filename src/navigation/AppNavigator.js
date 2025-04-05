@@ -6,16 +6,16 @@ import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 
 import LoginScreen from '../screens/LoginScreen';
-import ForgotPasswordScreen from '@/screens/authentication/ForgotPassword';
-import SettingsScreen from '@/screens/SettingsScreen';
-import ThemeSettingsScreen from '@/screens/ThemeSettingsScreen';
-import LanguageSettingsScreen from '@/screens/LanguageSettingsScreen';
-import HomeScreen from '@/screens/HomeScreen';
+import ForgotPasswordScreen from '../screens/authentication/ForgotPassword';
+import SettingsScreen from '../screens/SettingsScreen';
+import ThemeSettingsScreen from '../screens/ThemeSettingsScreen';
+import LanguageSettingsScreen from '../screens/LanguageSettingsScreen';
+import HomeScreen from '../screens/HomeScreen';
 import TaskDetailsScreen from '../screens/TaskDetailsScreen';
 import PropertyProblemScreen from '../screens/PropertyProblemScreen';
 import AccountBankScreen from '../screens/AccountBankScreen';
 import CompletedChecklistScreen from '../screens/CompletedChecklistScreen';
-import { useTheme } from '@/shared/theme';
+import { useTheme } from '../shared/theme';
 import InventoryNavigator from './inventory';
 
 
@@ -54,14 +54,7 @@ function MainAppNavigator() {
                 }}
             />
 
-            <Tab.Screen
-                name="AccountBank"
-                component={AccountBankScreen}
-                options={{
-                    title: t('navigation.accountBank'),
-                    tabBarIcon: ({ color }) => <Ionicons name="cash-outline" color={color} size={24} />,
-                }}
-            />
+
 
             <Tab.Screen
                 name="Settings"

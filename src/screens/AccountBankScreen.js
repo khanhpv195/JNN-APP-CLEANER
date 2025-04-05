@@ -13,6 +13,17 @@ export default function AccountBankScreen() {
     const [accountHolderName, setAccountHolderName] = useState('Test Account');
     const { updateBankInformation, loading } = useUpdateBankInformation();
 
+    // Function to mask sensitive information
+    const maskSensitiveInfo = (value) => {
+        if (!value) return '';
+
+        // Show only the last 4 digits, mask the rest with *
+        const lastFourDigits = value.slice(-4);
+        const maskedPart = '*'.repeat(value.length - 4);
+
+        return maskedPart + lastFourDigits;
+    };
+
     const handleSave = async () => {
         try {
             const bankData = {
@@ -54,7 +65,7 @@ export default function AccountBankScreen() {
         setIsEditMode(false);
     };
 
-    const renderField = (label, value) => (
+    const renderField = (label, value, isSensitive = false) => (
         <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{label}</Text>
             {isEditMode ? (
@@ -75,9 +86,12 @@ export default function AccountBankScreen() {
                         }
                     }}
                     keyboardType={label.includes('number') ? 'numeric' : 'default'}
+                    secureTextEntry={isSensitive && !isEditMode}
                 />
             ) : (
-                <Text style={styles.fieldValue}>{value}</Text>
+                <Text style={styles.fieldValue}>
+                    {isSensitive ? maskSensitiveInfo(value) : value}
+                </Text>
             )}
         </View>
     );
@@ -100,8 +114,8 @@ export default function AccountBankScreen() {
                 <Text style={styles.sectionTitle}>Recipient account information</Text>
 
                 <View style={styles.inputContainer}>
-                    {renderField('Account number', accountNumber)}
-                    {renderField('Routing number', routingNumber)}
+                    {renderField('Account number', accountNumber, true)}
+                    {renderField('Routing number', routingNumber, true)}
                     {renderField('Account holder name', accountHolderName)}
                 </View>
             </View>

@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useReservation } from '../hooks/useReservation';
 import { STATUS } from '../constants/status';
 
-
-
 export default function HomeScreen() {
     const navigation = useNavigation();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [calendarDays, setCalendarDays] = useState([]);
+    const [loadingMore, setLoadingMore] = useState(false);
     const { cleaningTasks, loading, error, updateTask, fetchCleaningTasks, setFetching } = useReservation();
 
     const refreshData = () => {
@@ -19,7 +18,7 @@ export default function HomeScreen() {
         const dateToFetch = new Date(selectedDate);
         dateToFetch.setHours(0, 0, 0, 0);
         fetchCleaningTasks(dateToFetch);
-        generateCalendarDays();
+        generateCalendarDays(selectedDate);
     };
 
     useFocusEffect(
@@ -32,7 +31,6 @@ export default function HomeScreen() {
             };
         }, [selectedDate]) // Add selectedDate as dependency to refresh with current date
     );
-
 
     // Add this function to filter tasks by selected date
     const getFilteredTasks = () => {
@@ -48,8 +46,49 @@ export default function HomeScreen() {
         });
     };
 
+    // Function to check if there's data for the current date
+    const hasDataForCurrentDate = () => {
+        const filteredTasks = getFilteredTasks();
+        return filteredTasks.length > 0;
+    };
+
+    // Handle load more when reaching end of list
+    const handleLoadMore = useCallback(async () => {
+        // Don't load more if we're already loading
+        if (loadingMore || loading) return;
+
+        try {
+            setLoadingMore(true);
+
+            // First check if there's any data for the current date
+            if (!hasDataForCurrentDate()) {
+                console.log('No data for current date, not loading next day');
+                setLoadingMore(false);
+                return;
+            }
+
+            // Get the next day after the currently selected date - be very precise to avoid skipping days
+            const currentDate = new Date(selectedDate);
+            currentDate.setHours(0, 0, 0, 0);
+
+            const nextDate = new Date(currentDate);
+            nextDate.setDate(currentDate.getDate() + 1);
+            nextDate.setHours(0, 0, 0, 0);
+
+            console.log(`Loading next day: ${nextDate.toISOString().split('T')[0]}`);
+
+            // Update the selected date to the next day
+            setSelectedDate(nextDate);
+
+            // Calendar will be updated via the useEffect dependency on selectedDate
+        } catch (error) {
+            console.error('Error loading more tasks:', error);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [loading, loadingMore, selectedDate, cleaningTasks]);
+
     useEffect(() => {
-        generateCalendarDays();
         // Create a new date object with time set to midnight to avoid timezone issues
         const dateToFetch = new Date(selectedDate);
         dateToFetch.setHours(0, 0, 0, 0);
@@ -60,20 +99,25 @@ export default function HomeScreen() {
         );
 
         fetchCleaningTasks(dateToFetch);
+        generateCalendarDays(dateToFetch);
     }, [selectedDate]);
 
+    const generateCalendarDays = (centerDate = new Date()) => {
+        const baseDateForCalendar = new Date(centerDate);
+        baseDateForCalendar.setHours(0, 0, 0, 0); // Normalize date to start of day
 
-
-    const generateCalendarDays = () => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Normalize today's date to start of day
         const days = [];
         const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
         for (let i = -3; i <= 3; i++) {
-            const date = new Date(today);
-            date.setDate(today.getDate() + i);
+            const date = new Date(baseDateForCalendar);
+            date.setDate(baseDateForCalendar.getDate() + i);
             date.setHours(0, 0, 0, 0); // Ensure all dates are at midnight
+
+            // Check if this date is today
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const isToday = date.getTime() === today.getTime();
 
             days.push({
                 date: date.getDate(),
@@ -85,7 +129,7 @@ export default function HomeScreen() {
                     taskDate.setHours(0, 0, 0, 0); // Normalize task date
                     return taskDate.toDateString() === date.toDateString();
                 }),
-                isToday: i === 0
+                isToday
             });
         }
         setCalendarDays(days);
@@ -126,7 +170,6 @@ export default function HomeScreen() {
                     {selectedDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
                 </Text>
                 <View style={styles.headerButtons}>
-
                     <TouchableOpacity onPress={handleRefresh}>
                         <Ionicons name="refresh" size={24} color="#00BFA5" />
                     </TouchableOpacity>
@@ -141,19 +184,24 @@ export default function HomeScreen() {
                 showsHorizontalScrollIndicator={false}
                 style={styles.calendar}
             >
-                {calendarDays.map((day) => (
+                {calendarDays.map((day, index) => (
                     <TouchableOpacity
-                        key={day.date}
+                        key={index}
                         style={[
                             styles.dayButton,
-                            selectedDate.toDateString() === day.fullDate.toDateString() && styles.selectedDay
+                            selectedDate.toDateString() === day.fullDate.toDateString() && styles.selectedDay,
+                            day.isToday && styles.todayButton
                         ]}
                         onPress={() => handleDateSelect(day.fullDate)}
                     >
-                        <Text style={styles.dayText}>{day.day}</Text>
+                        <Text style={[
+                            styles.dayText,
+                            day.isToday && styles.todayText
+                        ]}>{day.day}</Text>
                         <Text style={[
                             styles.dateText,
-                            selectedDate.toDateString() === day.fullDate.toDateString() && styles.selectedDayText
+                            selectedDate.toDateString() === day.fullDate.toDateString() && styles.selectedDayText,
+                            day.isToday && styles.todayText
                         ]}>{day.date}</Text>
                         {day.hasTask && <View style={styles.taskDot} />}
                     </TouchableOpacity>
@@ -161,6 +209,18 @@ export default function HomeScreen() {
             </ScrollView>
         </View>
     );
+
+    // Render footer for FlatList (loading indicator)
+    const renderFooter = () => {
+        if (!loadingMore) return null;
+
+        return (
+            <View style={styles.loadingFooter}>
+                <ActivityIndicator size="small" color="#00BFA5" />
+                <Text style={styles.loadingText}>Loading next day...</Text>
+            </View>
+        );
+    };
 
     // Task item render
     const renderTask = ({ item }) => {
@@ -237,7 +297,7 @@ export default function HomeScreen() {
     };
 
     // Add loading and error states
-    if (loading) {
+    if (loading && !loadingMore) {
         return (
             <View style={styles.container}>
                 <Text>Loading...</Text>
@@ -256,17 +316,27 @@ export default function HomeScreen() {
         );
     }
 
+    const filteredTasks = getFilteredTasks();
+
     return (
         <View style={styles.container}>
             {renderCalendar()}
             <FlatList
-                data={getFilteredTasks()}
+                data={filteredTasks}
                 renderItem={renderTask}
                 keyExtractor={item => item._id || item.id}
                 contentContainerStyle={styles.listContent}
                 refreshing={loading}
                 onRefresh={handleRefresh}
                 extraData={cleaningTasks}
+                ListFooterComponent={renderFooter}
+                onEndReached={handleLoadMore}
+                onEndReachedThreshold={0.3}
+                ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>No tasks for this day</Text>
+                    </View>
+                }
             />
         </View>
     );
@@ -312,6 +382,7 @@ const styles = StyleSheet.create({
     headerButtons: {
         flexDirection: 'row',
         gap: 15,
+        alignItems: 'center',
     },
     calendar: {
         paddingVertical: 10,
@@ -325,6 +396,11 @@ const styles = StyleSheet.create({
         backgroundColor: '#00BFA5',
         borderRadius: 25,
     },
+    todayButton: {
+        borderWidth: 1,
+        borderColor: '#ffffff',
+        borderRadius: 25,
+    },
     dayText: {
         color: '#666',
         marginBottom: 5,
@@ -336,6 +412,9 @@ const styles = StyleSheet.create({
     selectedDayText: {
         color: 'white',
     },
+    todayText: {
+        color: '#333333',
+    },
     taskDot: {
         width: 4,
         height: 4,
@@ -345,6 +424,8 @@ const styles = StyleSheet.create({
     },
     listContent: {
         padding: 15,
+        paddingBottom: 30,
+        minHeight: '50%', // Ensure there's always space to scroll
     },
     taskCard: {
         backgroundColor: 'white',
@@ -463,5 +544,24 @@ const styles = StyleSheet.create({
         marginLeft: 4,
         fontSize: 12,
         color: '#666',
+    },
+    loadingFooter: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 10,
+    },
+    loadingText: {
+        color: '#666',
+        fontSize: 14,
+        marginLeft: 8,
+    },
+    emptyContainer: {
+        padding: 20,
+        alignItems: 'center',
+    },
+    emptyText: {
+        color: '#666',
+        fontSize: 16,
     },
 });
