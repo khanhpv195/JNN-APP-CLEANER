@@ -9,10 +9,9 @@ import {
     Alert,
     Platform,
 } from 'react-native';
-import { EyeIcon, EyeSlashIcon } from 'react-native-heroicons/outline';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { useDispatch, useSelector } from 'react-redux';
-import { loginUser } from '../redux/slices/authSlice';
+import { loginUser } from '@/redux/slices/authSlice';
 import * as Device from 'expo-device';
 import { registerForPushNotificationsAsync } from '@/services/notificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -26,7 +25,7 @@ import Logo from '../../assets/images/Logo.png';
  * LoginScreen Component
  * Handles user authentication through email/password login
  */
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen({ navigation, route }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isShow, setIsShow] = useState(false);
@@ -36,7 +35,7 @@ export default function LoginScreen({ navigation }) {
     const { theme } = useTheme();
 
     const dispatch = useDispatch();
-    const { loading, error, user } = useSelector((state) => state.auth);
+    const { loading, error, isLoggedIn } = useSelector((state) => state.auth);
 
     // Get device information and push token when component mounts
     useEffect(() => {
@@ -91,14 +90,6 @@ export default function LoginScreen({ navigation }) {
         getDeviceAndTokenInfo();
     }, []);
 
-    // Thêm useEffect để kiểm tra thông tin user sau khi đăng nhập
-    useEffect(() => {
-        if (user) {
-            console.log('User data after login:', user);
-            console.log('Bank account info:', user.bankAccount);
-        }
-    }, [user]);
-
     const handleLogin = () => {
         if (!email || !password) {
             Alert.alert('Error', 'Please enter both email and password');
@@ -116,18 +107,41 @@ export default function LoginScreen({ navigation }) {
             loginData.device = deviceInfo;
         }
 
-        dispatch(loginUser(loginData))
-            .then((action) => {
-                // Kiểm tra kết quả sau khi đăng nhập
-                if (action.type === 'auth/loginUser/fulfilled') {
-                    console.log('Login successful, checking user data:', action.payload);
-                    // Kiểm tra thông tin bankAccount
-                    if (action.payload && !action.payload.bankAccount) {
-                        console.log('Bank account info missing, should redirect to AccountBank');
-                    }
-                }
-            });
+        dispatch(loginUser(loginData));
     };
+
+    // Handle displaying session expiration message when redirected to login
+    useEffect(() => {
+        // Check route params for session expiration flag
+        if (route?.params?.sessionExpired) {
+            console.log("Session expired flag detected in route params, showing alert");
+            // Clear the session expired param immediately to prevent showing the alert multiple times
+            if (navigation.setParams) {
+                navigation.setParams({ sessionExpired: undefined });
+            }
+
+            // Show the alert after clearing params
+            setTimeout(() => {
+                Alert.alert(
+                    'Session Expired',
+                    'Your session has expired. Please log in again.',
+                    [{ text: 'OK' }]
+                );
+            }, 100);
+        }
+    }, [route?.params]);
+
+    // Debug auth state changes
+    useEffect(() => {
+        console.log("LoginScreen - Auth state changed:", { isLoggedIn, loading, error });
+    }, [isLoggedIn, loading, error]);
+
+    // Debug successful login flow
+    useEffect(() => {
+        if (isLoggedIn) {
+            console.log("LoginScreen - User is logged in, should navigate away");
+        }
+    }, [isLoggedIn]);
 
     // Create dynamic styles based on the current theme
     const dynamicStyles = StyleSheet.create({
@@ -224,7 +238,7 @@ export default function LoginScreen({ navigation }) {
                         editable={!loading}
                     />
                     <TouchableOpacity onPress={() => setIsShow(!isShow)}>
-                        {isShow ? <EyeIcon size={20} color={theme.accent} /> : <EyeSlashIcon size={20} color={theme.accent} />}
+                        <Icon name={isShow ? "eye-outline" : "eye-off-outline"} size={24} color={theme.text} />
                     </TouchableOpacity>
                 </View>
 
@@ -236,7 +250,7 @@ export default function LoginScreen({ navigation }) {
                         ]}
                         onPress={() => setKeepLoggedIn(!keepLoggedIn)}
                     >
-                        {keepLoggedIn && <Ionicons name="checkmark" size={16} color="white" />}
+                        {keepLoggedIn && <Icon name="checkmark" size={16} color="white" />}
                     </TouchableOpacity>
                     <ThemedText style={dynamicStyles.checkboxLabel}>Keep me logged in</ThemedText>
                 </View>

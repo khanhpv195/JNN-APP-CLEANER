@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native'
-import ForgotPasswordComponent from '@/features/authentication/forgotPassword';
+import ForgotPasswordComponent from './../../features/authentication/forgotPassword';
 
 const ForgotPasswordScreen = () => {
 

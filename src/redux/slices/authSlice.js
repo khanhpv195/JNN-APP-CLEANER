@@ -19,9 +19,10 @@ export const authSlice = createSlice({
             state.error = null;
         },
         loginSuccess: (state, action) => {
+            console.log("Redux: loginSuccess action with payload:", action.payload);
             state.isLoggedIn = true;
             state.user = action.payload.user;
-            state.accessToken = action.payload.accessToken;
+            state.accessToken = action.payload.accessToken || action.payload.access_token;
             state.loading = false;
             state.error = null;
         },
@@ -38,10 +39,17 @@ export const authSlice = createSlice({
         updateUser: (state, action) => {
             state.user = action.payload;
         },
+        handleSessionExpired: (state) => {
+            state.isLoggedIn = false;
+            state.user = null;
+            state.accessToken = null;
+            // Only clear AsyncStorage here, let the fetch.js handle navigation
+            AsyncStorage.multiRemove(['accessToken', 'user']);
+        },
     },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout, updateUser } = authSlice.actions;
+export const { loginStart, loginSuccess, loginFailure, logout, updateUser, handleSessionExpired } = authSlice.actions;
 
 export const loginUser = (credentials) => async (dispatch) => {
     try {
@@ -56,6 +64,7 @@ export const loginUser = (credentials) => async (dispatch) => {
                 keepLoggedIn: credentials.keepLoggedIn !== false
             });
 
+            console.log('response', response)
             // Lưu vào AsyncStorage
             await AsyncStorage.setItem('accessToken', response.access_token);
             await AsyncStorage.setItem('user', JSON.stringify(response.user));
@@ -82,15 +91,46 @@ export const loginUser = (credentials) => async (dispatch) => {
 // Thunk action để kiểm tra trạng thái đăng nhập từ AsyncStorage
 export const checkAuthState = () => async (dispatch) => {
     try {
+        console.log("Checking auth state from AsyncStorage");
         const accessToken = await AsyncStorage.getItem('accessToken');
         const userString = await AsyncStorage.getItem('user');
 
         if (accessToken && userString) {
-            const user = JSON.parse(userString);
-            dispatch(loginSuccess({ user, accessToken }));
+            try {
+                const user = JSON.parse(userString);
+                console.log("Found saved credentials, restoring session");
+                dispatch(loginSuccess({ user, accessToken }));
+                return true; // Trả về true nếu đăng nhập thành công
+            } catch (parseError) {
+                console.error('Error parsing user data:', parseError);
+                dispatch(logout());
+                return false;
+            }
+        } else {
+            // Nếu không có token hoặc user, đảm bảo trạng thái là đã logout
+            console.log("No saved credentials found");
+            dispatch(logout());
+            return false;
         }
     } catch (error) {
         console.error('Error checking auth state:', error);
+        // Trong trường hợp lỗi, đảm bảo trạng thái là đã logout
+        dispatch(logout());
+        return false;
+    }
+};
+
+// Thunk action để xử lý logout khi phiên hết hạn
+export const handleExpiredSession = () => async (dispatch) => {
+    try {
+        // Xóa dữ liệu từ AsyncStorage
+        await AsyncStorage.multiRemove(['accessToken', 'user']);
+        // Cập nhật trạng thái Redux
+        dispatch(logout());
+    } catch (error) {
+        console.error('Error handling session expiration:', error);
+        // Đảm bảo trạng thái là đã logout ngay cả khi có lỗi
+        dispatch(logout());
     }
 };
 

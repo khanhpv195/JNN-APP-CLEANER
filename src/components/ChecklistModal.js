@@ -16,7 +16,7 @@ import {
     createImageFormData
 } from '@/utils/imageUtils';
 
-import cleanerApis from '../shared/api/cleanerApis';
+import TaskApis from '../shared/api/taskApis';
 
 export default function ChecklistModal({ visible, onClose, onComplete, loading, checkList }) {
     const [checklist, setChecklist] = useState(
@@ -85,7 +85,7 @@ export default function ChecklistModal({ visible, onClose, onComplete, loading, 
 
             console.log('Debug: Uploading image:', imageUri);
 
-            const response = await cleanerApis.uploadImage(formData);
+            const response = await TaskApis.uploadImage(formData);
             handleUploadResponse(response, item, sectionIndex, itemIndex);
         } catch (error) {
             console.error('Error uploading image:', error);

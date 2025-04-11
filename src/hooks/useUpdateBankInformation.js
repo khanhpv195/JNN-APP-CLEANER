@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import listTaskCleanerApis from '../shared/api/cleanerApis';
+import listTaskTaskApis from '../shared/api/taskApis';
 
 export const useUpdateBankInformation = () => {
     const [loading, setLoading] = useState(false);
@@ -20,7 +20,7 @@ export const useUpdateBankInformation = () => {
                 }
             };
 
-            const response = await listTaskCleanerApis.updateBankInformation(payload);
+            const response = await listTaskTaskApis.updateBankInformation(payload);
             return response;
         } catch (err) {
             setError(err.message || 'An error occurred while updating bank information');

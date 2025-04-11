@@ -12,6 +12,7 @@ export default function HomeScreen() {
     const [loadingMore, setLoadingMore] = useState(false);
     const { cleaningTasks, loading, error, updateTask, fetchCleaningTasks, setFetching } = useReservation();
 
+
     const refreshData = () => {
         console.log('Refreshing data...');
         // Force refresh by using a new Date object
@@ -300,18 +301,50 @@ export default function HomeScreen() {
     if (loading && !loadingMore) {
         return (
             <View style={styles.container}>
-                <Text>Loading...</Text>
+                <ActivityIndicator size="large" color="#00BFA5" />
+                <Text style={styles.loadingText}>Loading tasks...</Text>
             </View>
         );
     }
 
     if (error) {
+        // Special case for permission error
+        if (error.includes('permission')) {
+            return (
+                <View style={styles.container}>
+                    {renderCalendar()}
+                    <View style={styles.errorContainer}>
+                        <Ionicons name="lock-closed" size={48} color="#FF3B30" />
+                        <Text style={styles.errorTitle}>Access Restricted</Text>
+                        <Text style={styles.errorText}>
+                            You don't have permission to view cleaning tasks. Please contact an administrator.
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.retryButton}
+                            onPress={handleRefresh}
+                        >
+                            <Text style={styles.retryButtonText}>Retry</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            );
+        }
+
+        // For other errors
         return (
             <View style={styles.container}>
-                <Text>Error: {error}</Text>
-                <TouchableOpacity onPress={handleRefresh}>
-                    <Text>Retry</Text>
-                </TouchableOpacity>
+                {renderCalendar()}
+                <View style={styles.errorContainer}>
+                    <Ionicons name="alert-circle" size={48} color="#FF3B30" />
+                    <Text style={styles.errorTitle}>Something went wrong</Text>
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity
+                        style={styles.retryButton}
+                        onPress={handleRefresh}
+                    >
+                        <Text style={styles.retryButtonText}>Retry</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         );
     }
@@ -362,7 +395,7 @@ const getStatusText = (status) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#f8f8f8',
     },
     calendarContainer: {
         backgroundColor: 'white',
@@ -552,9 +585,10 @@ const styles = StyleSheet.create({
         padding: 10,
     },
     loadingText: {
-        color: '#666',
-        fontSize: 14,
-        marginLeft: 8,
+        marginTop: 10,
+        fontSize: 16,
+        color: '#00BFA5',
+        textAlign: 'center',
     },
     emptyContainer: {
         padding: 20,
@@ -563,5 +597,32 @@ const styles = StyleSheet.create({
     emptyText: {
         color: '#666',
         fontSize: 16,
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    errorTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    errorText: {
+        color: '#666',
+        fontSize: 16,
+        marginBottom: 20,
+    },
+    retryButton: {
+        backgroundColor: '#00BFA5',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+    retryButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });

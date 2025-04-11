@@ -8,16 +8,46 @@ import taskApis from '@/shared/api/taskApis';
  * @param {Object} options - React Query options
  * @returns {Object} React Query result object
  */
-export function useFetchTasks(params = {}, options = {}) {
+export function useFetchAcceptedTasks(params = {}, options = {}) {
   return useFetchData(
-    '/listTask',
+    '/listCleanerTaskAccepted',
     ['tasks', params], // Include params in query key for proper caching
     {
       method: 'POST',
       staleTime: 1000 * 60 * 5, // 5 minutes
       cacheTime: 1000 * 60 * 30, // 30 minutes
       retry: 1,
-      queryFn: () => taskApis.getTasks(params),
+      queryFn: () => taskApis.listCleanerTaskAccepted(params),
+      ...options
+    }
+  );
+}
+
+export function useFetchPendingTasks(params = {}, options = {}) {
+  return useFetchData(
+    '/listCleanerTaskPending',
+    ['tasks', params], // Include params in query key for proper caching
+    {
+      method: 'POST',
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      cacheTime: 1000 * 60 * 30, // 30 minutes
+      retry: 1,
+      queryFn: () => taskApis.listCleanerTaskPending(params),
+      ...options
+    }
+  );
+}
+
+export function useFetchCompletedTasks(params = {}, options = {}) {
+  return useFetchData(
+    '/listCleanerTaskCompleted',
+    ['tasks', params], // Include params in query key for proper caching
+    {
+      method: 'POST',
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      cacheTime: 1000 * 60 * 30, // 30 minutes
+      retry: 1,
+      queryFn: () => taskApis.listCleanerTaskCompleted(params),
       ...options
     }
   );
@@ -82,21 +112,21 @@ export function useTaskDetail(taskId, options = {}) {
         return taskApis.detailTaskCleaner({ taskId: validId })
           .then(response => {
             // Only log response status and structure, not the full response
-            console.log('API response received:', 
-              response ? 
-                `Status: ${response.success ? 'Success' : 'Failed'}, Has data: ${!!response.data}` 
+            console.log('API response received:',
+              response ?
+                `Status: ${response.success ? 'Success' : 'Failed'}, Has data: ${!!response.data}`
                 : 'No response'
             );
-            
+
             // Add validation check for response
             if (!response) {
               throw new Error('Empty response from server');
             }
-            
+
             if (response.error) {
               throw new Error(response.error.message || 'Server error occurred');
             }
-            
+
             return response;
           })
           .catch(error => {

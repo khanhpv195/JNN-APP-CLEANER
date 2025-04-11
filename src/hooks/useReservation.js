@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
-import cleanerApis from '../shared/api/cleanerApis';
+import { useState, useEffect, useCallback } from 'react';
+import TaskApis from '../shared/api/taskApis';
+import { POST } from '../shared/api/fetch';
+import format from 'date-fns/format';
+import { Alert } from 'react-native';
 
 /**
  * Custom hook for managing cleaning tasks
@@ -10,34 +13,50 @@ export const useReservation = () => {
     const [fetching, setFetching] = useState(false);
     const [error, setError] = useState(null);
     const [cleaningTasks, setCleaningTasks] = useState([]);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     /**
      * Fetch all cleaning tasks for a specific date
      * @param {Date} date - Selected date to fetch tasks for
      */
-    const fetchCleaningTasks = async (date = new Date()) => {
-        setFetching(true);
-        setError(null);
-
+    const fetchCleaningTasks = useCallback(async (date = new Date()) => {
         try {
-            // Fix timezone offset by setting time to start of day in local timezone
+            setLoading(true);
+            setError(null);
+
+            // Format the date for API (YYYY-MM-DD)
             const localDate = new Date(date);
-            localDate.setHours(0, 0, 0, 0);
             console.log('localDate', localDate);
-
-            // Format date as YYYY-MM-DD to avoid timezone issues
-            const year = localDate.getFullYear();
-            const month = String(localDate.getMonth() + 1).padStart(2, '0');
-            const day = String(localDate.getDate()).padStart(2, '0');
-            const formattedDate = `${year}-${month}-${day}`;
-
+            const formattedDate = format(localDate, 'yyyy-MM-dd');
             console.log('Formatted date for API:', formattedDate);
 
-            const response = await cleanerApis.listTask({
-                date: formattedDate
+            const requestBody = {
+                date: formattedDate,
+                status: 'ASSIGNED'
+            };
+
+            console.log('requestBody', requestBody);
+
+            const response = await POST('/listCleaningTasks', {
+                body: requestBody,
+            }).catch(error => {
+                // Check if the error is a permission error
+                if (error.message && error.message.includes('access denied')) {
+                    // Handle permission error without affecting login state
+                    setError('You do not have permission to access cleaning tasks');
+                    // Keep the tasks list empty but don't throw further
+                    setCleaningTasks([]);
+                    console.log('Permission error handled in useReservation hook:', error.message);
+                    // Return empty data to prevent further error handling
+                    return { data: [] };
+                }
+                // Re-throw other errors to be caught by the outer catch
+                throw error;
             });
 
-            if (response?.data?.length > 0) {
+            console.log('response', response);
+
+            if (response && response.data) {
                 const tasks = response.data.map(task => ({
                     id: task?._id,
                     roomNumber: task?.propertyDetails?.name,
@@ -70,13 +89,22 @@ export const useReservation = () => {
                 return tasks;
             }
             return response
-        } catch (error) {
-            setError(error.message || 'An error occurred while fetching tasks');
-            throw error;
+        } catch (err) {
+            console.error('Error fetching cleaning tasks:', err);
+            setError(err.message || 'Failed to load cleaning tasks');
+
+            // Show error alert for non-permission errors
+            if (!err.message.includes('access denied')) {
+                Alert.alert(
+                    'Error Loading Tasks',
+                    err.message || 'An error occurred while loading tasks',
+                    [{ text: 'OK' }]
+                );
+            }
         } finally {
-            setFetching(false);
+            setLoading(false);
         }
-    };
+    }, []);
 
     /**
      * Get details of a specific cleaning task
@@ -87,7 +115,7 @@ export const useReservation = () => {
             setLoading(true);
             setError(null);
 
-            const response = await cleanerApis.detailTaskCleaner({
+            const response = await TaskApis.detailTaskCleaner({
                 taskId
             });
 
@@ -114,7 +142,7 @@ export const useReservation = () => {
             setLoading(true);
             setError(null);
 
-            const response = await cleanerApis.updateTaskCleaner({
+            const response = await TaskApis.updateTaskCleaner({
                 taskId: taskId,
                 ...updateData
             });
@@ -136,7 +164,7 @@ export const useReservation = () => {
             setLoading(true);
             setError(null);
 
-            const response = await cleanerApis.updateProperty({
+            const response = await TaskApis.updateProperty({
                 propertyId,
                 ...updateData
             });
@@ -158,11 +186,11 @@ export const useReservation = () => {
     // Initial fetch with today's date
     useEffect(() => {
         fetchCleaningTasks(new Date());
-    }, []);
+    }, [fetchCleaningTasks]);
 
     const uploadImage = async (formData) => {
         try {
-            const response = await cleanerApis.uploadImage(formData);
+            const response = await TaskApis.uploadImage(formData);
             return response.data;
         } catch (error) {
             console.error('Error uploading image:', error);
@@ -180,6 +208,9 @@ export const useReservation = () => {
         getTaskDetails,
         updateTask,
         uploadImage,
-        updateProperty
+        updateProperty,
+        refreshKey,
+        setRefreshKey,
+        setFetching
     };
 }; 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import cleanrApis from "@/shared/api/cleanerApis"
+import cleanrApis from "@/shared/api/TaskApis"
 
 export const useGetCleaners = () => {
   const [cleaners, setCleaners] = useState([])
@@ -20,7 +20,7 @@ export const useGetCleaners = () => {
         setIsLoading(true);
       }
     };
-    if(!ignore){
+    if (!ignore) {
       getData();
     }
 

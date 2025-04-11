@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "JNN Staff App",
-    "slug": "jnn-staff-app",
+    "name": "JNN Cleaner",
+    "slug": "jnn-cleaner",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,7 +20,18 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.jnn"
+      "bundleIdentifier": "com.jnn.cleaner",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "tel",
+          "aircall"
+        ],
+        "UIBackgroundModes": [
+          "remote-notification"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,9 +39,11 @@
         "backgroundColor": "#FFFFFF"
       },
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS"
       ],
-      "package": "com.jnn"
+      "package": "com.jnn.cleaner",
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       [
@@ -44,12 +57,22 @@
         {
           "android": {
             "kotlinVersion": "1.9.25"
+          },
+          "ios": {
+            "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      [
+        "expo-notifications"
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
     ],
     "extra": {
-      "eas": {}
+      "eas": {
+        "projectId": "18398076-6a0a-4f1d-ab06-2d09bdef33d1"
+      }
     }
   }
 }

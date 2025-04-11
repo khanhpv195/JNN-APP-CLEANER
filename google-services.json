@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1028716700415",
+    "project_id": "jnn-cleaner",
+    "storage_bucket": "jnn-cleaner.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1028716700415:android:7f7777644ef42cff0862ca",
+        "android_client_info": {
+          "package_name": "com.jnn.cleaner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDs9bVZF2NX6XX64AQZaOxYE4IWPLd-Okw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
