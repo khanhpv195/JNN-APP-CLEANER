@@ -3,3 +3,6 @@ export const STATUS = {
     COMPLETED: 'COMPLETED',
     PENDING: 'PENDING'
 };
+
+// Debug log
+console.log('STATUS constants loaded:', STATUS);

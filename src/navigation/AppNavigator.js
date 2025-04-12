@@ -12,6 +12,7 @@ import ThemeSettingsScreen from '../screens/ThemeSettingsScreen';
 import LanguageSettingsScreen from '../screens/LanguageSettingsScreen';
 import HomeScreen from '../screens/HomeScreen';
 import TaskDetailsScreen from '../screens/TaskDetailsScreen';
+import RequestScreen from '../screens/RequestScreen';
 import PropertyProblemScreen from '../screens/PropertyProblemScreen';
 import AccountBankScreen from '../screens/AccountBankScreen';
 import CompletedChecklistScreen from '../screens/CompletedChecklistScreen';
@@ -46,6 +47,14 @@ function MainAppNavigator() {
                 }}
             />
             <Tab.Screen
+                name="Requests"
+                component={RequestScreen}
+                options={{
+                    title: t('navigation.requests', 'Requests'),
+                    tabBarIcon: ({ color }) => <Ionicons name="notifications" color={color} size={24} />,
+                }}
+            />
+            <Tab.Screen
                 name="Inventory"
                 component={InventoryNavigator}
                 options={{
@@ -53,9 +62,6 @@ function MainAppNavigator() {
                     tabBarIcon: ({ color }) => <Ionicons name="list" color={color} size={24} />,
                 }}
             />
-
-
-
             <Tab.Screen
                 name="Settings"
                 component={SettingsScreen}

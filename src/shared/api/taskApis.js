@@ -28,7 +28,7 @@ const TaskApis = {
             checklist: params.checklist
         });
 
-        return POST(`/updateCleanerStatus`, {
+        return POST(`/updateTaskStatus`, {
             body: {
                 taskId: params.taskId,
                 status: params.status,

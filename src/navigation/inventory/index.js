@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import InventoryListScreen from '../../screens/InventoryListScreen';
 import InventoryCreateScreen from '../../screens/InventoryCreateScreen';
-
+import InventoryDetailScreen from '../../screens/InventoryDetailScreen';
 const ProjectStack = createStackNavigator();
 
 export default function InventoryNavigator() {
@@ -19,6 +19,13 @@ export default function InventoryNavigator() {
                     tabBarIcon: ({ color }) => <Icon name="albums" color={color} size={24} />,
                     title: t('navigation.inventory'),
                     headerShown: false,
+                })}
+            />
+            <ProjectStack.Screen
+                name="detail_inventory"
+                component={InventoryDetailScreen}
+                options={({ navigation }) => ({
+                    headerShown: false
                 })}
             />
 

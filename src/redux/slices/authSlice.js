@@ -19,7 +19,6 @@ export const authSlice = createSlice({
             state.error = null;
         },
         loginSuccess: (state, action) => {
-            console.log("Redux: loginSuccess action with payload:", action.payload);
             state.isLoggedIn = true;
             state.user = action.payload.user;
             state.accessToken = action.payload.accessToken || action.payload.access_token;
@@ -64,7 +63,6 @@ export const loginUser = (credentials) => async (dispatch) => {
                 keepLoggedIn: credentials.keepLoggedIn !== false
             });
 
-            console.log('response', response)
             // Lưu vào AsyncStorage
             await AsyncStorage.setItem('accessToken', response.access_token);
             await AsyncStorage.setItem('user', JSON.stringify(response.user));

@@ -3,6 +3,7 @@ import TaskApis from '../shared/api/taskApis';
 import { POST } from '../shared/api/fetch';
 import format from 'date-fns/format';
 import { Alert } from 'react-native';
+import { STATUS } from '../constants/status';
 
 /**
  * Custom hook for managing cleaning tasks
@@ -18,26 +19,32 @@ export const useReservation = () => {
     /**
      * Fetch all cleaning tasks for a specific date
      * @param {Date} date - Selected date to fetch tasks for
+     * @param {String} status - Optional status filter (PENDING, IN_PROGRESS, COMPLETED)
      */
-    const fetchCleaningTasks = useCallback(async (date = new Date()) => {
+    const fetchCleaningTasks = useCallback(async (date = new Date(), status = null) => {
         try {
             setLoading(true);
             setError(null);
 
             // Format the date for API (YYYY-MM-DD)
             const localDate = new Date(date);
-            console.log('localDate', localDate);
             const formattedDate = format(localDate, 'yyyy-MM-dd');
-            console.log('Formatted date for API:', formattedDate);
 
+            // Build request body
             const requestBody = {
                 date: formattedDate,
-                status: 'ASSIGNED'
             };
 
-            console.log('requestBody', requestBody);
+            // Add status filter if provided
+            if (status) {
+                requestBody.status = status;
+                console.log(`Filtering tasks by status: ${status}`);
+            }
 
-            const response = await POST('/listCleaningTasks', {
+            // Debug request body
+            console.log('Request body:', JSON.stringify(requestBody));
+
+            const response = await POST('/listPendingCleaningTasks', {
                 body: requestBody,
             }).catch(error => {
                 // Check if the error is a permission error
@@ -54,39 +61,10 @@ export const useReservation = () => {
                 throw error;
             });
 
-            console.log('response', response);
 
             if (response && response.data) {
-                const tasks = response.data.map(task => ({
-                    id: task?._id,
-                    roomNumber: task?.propertyDetails?.name,
-                    title: task?.propertyDetails?.name || 'Unknown Property',
-                    address: task?.propertyDetails?.address,
-                    checkoutTime: task?.reservationDetails?.checkOut
-                        ? new Date(task.reservationDetails.checkOut).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true
-                        })
-                        : 'N/A',
-                    readyToClean: task?.status === 'PENDING',
-                    accepted: task?.status === 'IN_PROGRESS',
-                    checkInDate: task?.reservationDetails?.checkIn
-                        ? new Date(task.reservationDetails.checkIn)
-                        : null,
-                    checkOutDate: task?.reservationDetails?.checkOut
-                        ? new Date(task.reservationDetails.checkOut)
-                        : null,
-                    status: task?.status || 'UNKNOWN',
-                    price: task?.price?.amount || 0,
-                    propertyId: task?.propertyId?._id || {},
-                    propertyDetails: task?.propertyId || {},
-                    reservationDetails: task?.reservationDetails || {},
-                    _id: task?._id
-                }));
-
-                setCleaningTasks(tasks);
-                return tasks;
+                setCleaningTasks(response.data);
+                return response.data;
             }
             return response
         } catch (err) {
@@ -106,6 +84,38 @@ export const useReservation = () => {
         }
     }, []);
 
+
+    //  fetch all cleaning tasks, != pending
+    const fetchCleaningTasksNotPending = useCallback(async (date = new Date()) => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            // Format the date for API (YYYY-MM-DD)
+            const localDate = new Date(date);
+            const formattedDate = format(localDate, 'yyyy-MM-dd');
+
+            const response = await POST('/listAcceptedCleaningTasks', {
+                body: {
+                    date: formattedDate
+                }
+            });
+
+
+            if (response && response.data) {
+
+                setCleaningTasks(response.data);
+                return response.data;
+            }
+            return response;
+        } catch (err) {
+            console.error('Error fetching cleaning tasks:', err);
+            setError(err.message || 'Failed to load cleaning tasks');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     /**
      * Get details of a specific cleaning task
      * @param {string} taskId - ID of the task to fetch details for
@@ -118,6 +128,7 @@ export const useReservation = () => {
             const response = await TaskApis.detailTaskCleaner({
                 taskId
             });
+
 
             if (!response?.success) {
                 throw new Error(response?.message || 'Failed to fetch task details');
@@ -183,11 +194,6 @@ export const useReservation = () => {
 
     const clearError = () => setError(null);
 
-    // Initial fetch with today's date
-    useEffect(() => {
-        fetchCleaningTasks(new Date());
-    }, [fetchCleaningTasks]);
-
     const uploadImage = async (formData) => {
         try {
             const response = await TaskApis.uploadImage(formData);
@@ -205,6 +211,7 @@ export const useReservation = () => {
         error,
         clearError,
         fetchCleaningTasks,
+        fetchCleaningTasksNotPending,
         getTaskDetails,
         updateTask,
         uploadImage,

@@ -19,16 +19,30 @@ import {
 import TaskApis from '../shared/api/taskApis';
 
 export default function ChecklistModal({ visible, onClose, onComplete, loading, checkList }) {
+    console.log('ChecklistModal received checkList:', checkList);
+    console.log('ChecklistModal checkList structure:', Array.isArray(checkList) ? 'Array' : typeof checkList);
+
+    // Add additional structure checking
+    if (Array.isArray(checkList)) {
+        console.log('ChecklistModal checkList items:', checkList.length);
+        if (checkList.length > 0) {
+            console.log('First item structure:', JSON.stringify(checkList[0], null, 2));
+        }
+    }
+
     const [checklist, setChecklist] = useState(
-        checkList.map(section => ({
+        Array.isArray(checkList) ? checkList.map(section => ({
             ...section,
-            items: section.items.map(item => ({
-                text: item,
+            items: Array.isArray(section.items) ? section.items.map(item => ({
+                text: typeof item === 'string' ? item : item.text || 'Task',
                 checked: false,
                 image: null
-            }))
-        }))
+            })) : []
+        })) : []
     );
+
+    console.log('Processed checklist for rendering:', checklist.length, 'sections');
+
     const [isUploading, setIsUploading] = useState(false);
     const [uploadQueue, setUploadQueue] = useState([]);
     const [currentItemIndices, setCurrentItemIndices] = useState(null);

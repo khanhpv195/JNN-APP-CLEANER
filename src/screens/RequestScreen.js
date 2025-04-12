@@ -5,26 +5,25 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useReservation } from '../hooks/useReservation';
 import { STATUS } from '../constants/status';
 
-export default function HomeScreen() {
+export default function RequestScreen() {
     const navigation = useNavigation();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [selectedMonth, setSelectedMonth] = useState(new Date());
     const [calendarDays, setCalendarDays] = useState([]);
     const [months, setMonths] = useState([]);
     const [calendarExpanded, setCalendarExpanded] = useState(false);
-    const { cleaningTasks, loading, error, updateTask, fetchCleaningTasksNotPending, setFetching } = useReservation();
+    const { cleaningTasks, loading, error, updateTask, fetchCleaningTasks, setFetching } = useReservation();
     const screenWidth = Dimensions.get('window').width;
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    console.log('cleaningTasks in HomeScreen:', cleaningTasks);
-
 
     const refreshData = () => {
         // Force refresh by using a new Date object
         const dateToFetch = new Date(selectedDate);
         dateToFetch.setHours(0, 0, 0, 0);
 
-        fetchCleaningTasksNotPending(dateToFetch);
+        // Make sure we explicitly pass the PENDING status
+        console.log('Refreshing with status:', STATUS.PENDING);
+        fetchCleaningTasks(dateToFetch, STATUS.PENDING);
 
         generateCalendarDays(selectedDate);
         generateMonths(selectedMonth);
@@ -32,43 +31,40 @@ export default function HomeScreen() {
 
     useFocusEffect(
         React.useCallback(() => {
-            console.log('Home screen focused, refreshing data');
+            console.log('Request screen focused, refreshing data');
             refreshData();
 
             return () => {
-                console.log('Home screen unfocused');
+                console.log('Request screen unfocused');
             };
         }, []) // Remove selectedDate dependency to prevent continuous refreshes
     );
 
     // Add this function to filter tasks by selected date
     const getFilteredTasks = () => {
-        console.log('Filtering tasks in HomeScreen:', cleaningTasks.length);
-
-        // Filter tasks - show all except PENDING
+        console.log('Filtering tasks in RequestScreen:', cleaningTasks.length);
+        // Filter pending tasks only
         return cleaningTasks.filter(task => {
-            // Skip all PENDING tasks
-            if (task.status === STATUS.PENDING) {
-                console.log('Task filtered out because it is PENDING:', task._id);
+            // Make sure we only show PENDING status tasks
+            if (task.status !== STATUS.PENDING) {
+                console.log('Task filtered out because it is not PENDING:', task.status);
                 return false;
             }
 
-            // Filter by date
+            // If task has checkOutDate, use it for date filtering
             if (task.checkOutDate) {
                 const taskDate = new Date(task.checkOutDate);
-                taskDate.setHours(0, 0, 0, 0);
+                taskDate.setHours(0, 0, 0, 0); // Normalize task date to start of day
 
                 const compareDate = new Date(selectedDate);
-                compareDate.setHours(0, 0, 0, 0);
+                compareDate.setHours(0, 0, 0, 0); // Normalize selected date
 
-                const matched = taskDate.toDateString() === compareDate.toDateString();
-                if (!matched) {
-                    console.log(`Task ${task._id} does not match date. Task date: ${taskDate.toDateString()}, Selected date: ${compareDate.toDateString()}`);
-                }
-                return matched;
+                return taskDate.toDateString() === compareDate.toDateString();
             }
 
-            // Default: show tasks without date
+            // If we reach here, the task has PENDING status but no checkOut date
+            // Show these tasks regardless of the selected date
+            console.log('Including PENDING task with no checkout date:', task._id);
             return true;
         });
     };
@@ -94,7 +90,7 @@ export default function HomeScreen() {
         console.log('Initial data load');
         const dateToFetch = new Date(selectedDate);
         dateToFetch.setHours(0, 0, 0, 0);
-        fetchCleaningTasksNotPending(dateToFetch);
+        fetchCleaningTasks(dateToFetch, STATUS.PENDING);
         generateMonths(selectedMonth);
     }, []); // Empty dependency array - only run once on mount
 
@@ -136,10 +132,10 @@ export default function HomeScreen() {
 
                 // Check if there are tasks for this day
                 const hasTask = cleaningTasks.some(task => {
-                    if (task.status === STATUS.PENDING) return false;
-                    if (!task.checkOutDate) return false;
+                    if (task.status !== STATUS.PENDING) return false;
+                    if (!task.reservationDetails?.checkOut) return false;
 
-                    const taskDate = new Date(task.checkOutDate);
+                    const taskDate = new Date(task.reservationDetails.checkOut);
                     taskDate.setHours(0, 0, 0, 0);
                     return taskDate.toDateString() === date.toDateString();
                 });
@@ -187,9 +183,9 @@ export default function HomeScreen() {
                 // Only consider PENDING tasks
                 if (task.status !== STATUS.PENDING) return false;
 
-                // If task has checkOut date, use it for date comparison
-                if (task.reservationDetails?.checkOut) {
-                    const taskDate = new Date(task.reservationDetails.checkOut);
+                // If task has checkOutDate, use it for date comparison
+                if (task.checkOutDate) {
+                    const taskDate = new Date(task.checkOutDate);
                     taskDate.setHours(0, 0, 0, 0); // Normalize task date
                     return taskDate.toDateString() === date.toDateString();
                 }
@@ -229,7 +225,9 @@ export default function HomeScreen() {
         if (newSelectedDate.toDateString() !== selectedDate.toDateString()) {
             setSelectedDate(newSelectedDate);
 
-            fetchCleaningTasksNotPending(newSelectedDate);
+            // Manually fetch data for the new date
+            console.log('Selected new date, fetching with status:', STATUS.PENDING);
+            fetchCleaningTasks(newSelectedDate, STATUS.PENDING);
         }
 
         // Update the selected month if the date is in a different month
@@ -338,54 +336,6 @@ export default function HomeScreen() {
         }
     };
 
-    // Calendar render for week view
-    const renderWeekCalendar = () => (
-        <View style={styles.weekCalendar}>
-            {calendarDays.map((day, index) => (
-                <TouchableOpacity
-                    key={index}
-                    style={[
-                        styles.dayItem,
-                        day.isToday && styles.dayItemToday,
-                        day.fullDate.toDateString() === selectedDate.toDateString() && styles.dayItemSelected
-                    ]}
-                    onPress={() => handleDateSelect(day.fullDate)}
-                >
-                    <Text
-                        style={[
-                            styles.weekdayText,
-                            day.isToday && styles.todayText,
-                            day.fullDate.toDateString() === selectedDate.toDateString() && styles.weekdayTextSelected
-                        ]}
-                    >
-                        {day.day}
-                    </Text>
-                    <Text
-                        style={[
-                            styles.dayText,
-                            day.isToday && styles.todayText,
-                            day.fullDate.toDateString() === selectedDate.toDateString() && styles.dayTextSelected
-                        ]}
-                    >
-                        {day.date}
-                    </Text>
-                    {day.hasTask && (
-                        <View style={[
-                            styles.taskDot,
-                            day.fullDate.toDateString() === selectedDate.toDateString() ?
-                                { backgroundColor: 'white' } : { backgroundColor: '#00BFA6' }
-                        ]} />
-                    )}
-                </TouchableOpacity>
-            ))}
-        </View>
-    );
-
-    // Render footer for FlatList
-    const renderFooter = () => {
-        return null;
-    };
-
     // Render 1-year calendar
     const renderMonthCalendar = () => {
         const currentMonth = months.find(m => m.month === selectedMonth.getMonth());
@@ -464,6 +414,54 @@ export default function HomeScreen() {
                 </View>
             </View>
         );
+    };
+
+    // Calendar render for week view
+    const renderWeekCalendar = () => (
+        <View style={styles.weekCalendar}>
+            {calendarDays.map((day, index) => (
+                <TouchableOpacity
+                    key={index}
+                    style={[
+                        styles.dayItem,
+                        day.isToday && styles.dayItemToday,
+                        day.fullDate.toDateString() === selectedDate.toDateString() && styles.dayItemSelected
+                    ]}
+                    onPress={() => handleDateSelect(day.fullDate)}
+                >
+                    <Text
+                        style={[
+                            styles.weekdayText,
+                            day.isToday && styles.todayText,
+                            day.fullDate.toDateString() === selectedDate.toDateString() && styles.weekdayTextSelected
+                        ]}
+                    >
+                        {day.day}
+                    </Text>
+                    <Text
+                        style={[
+                            styles.dayText,
+                            day.isToday && styles.todayText,
+                            day.fullDate.toDateString() === selectedDate.toDateString() && styles.dayTextSelected
+                        ]}
+                    >
+                        {day.date}
+                    </Text>
+                    {day.hasTask && (
+                        <View style={[
+                            styles.taskDot,
+                            day.fullDate.toDateString() === selectedDate.toDateString() ?
+                                { backgroundColor: 'white' } : { backgroundColor: '#00BFA6' }
+                        ]} />
+                    )}
+                </TouchableOpacity>
+            ))}
+        </View>
+    );
+
+    // Render footer for FlatList (không cần nữa vì đã loại bỏ tính năng tự động chuyển ngày)
+    const renderFooter = () => {
+        return null;
     };
 
     // Task item render
@@ -630,7 +628,18 @@ export default function HomeScreen() {
                     )}
                 </View>
 
-                {/* No action buttons needed in home page */}
+                <TouchableOpacity
+                    style={[
+                        styles.acceptButton,
+                        isSubmitting && styles.disabledButton
+                    ]}
+                    onPress={() => handleAcceptTask(item)}
+                    disabled={isSubmitting}
+                >
+                    <Text style={styles.acceptButtonText}>
+                        {isSubmitting ? 'Processing...' : 'Accept Request'}
+                    </Text>
+                </TouchableOpacity>
             </TouchableOpacity>
         );
     };
@@ -688,7 +697,7 @@ export default function HomeScreen() {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>My Task</Text>
+                <Text style={styles.headerTitle}>Cleaning Requests</Text>
             </View>
 
             <View style={styles.weekCalendarContainer}>
@@ -1258,18 +1267,5 @@ const styles = StyleSheet.create({
     },
     disabledButton: {
         opacity: 0.7,
-    },
-    actionButton: {
-        backgroundColor: '#00BFA5',
-        paddingHorizontal: 15,
-        paddingVertical: 10,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginTop: 10,
-    },
-    actionButtonText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 16,
     },
 }); 

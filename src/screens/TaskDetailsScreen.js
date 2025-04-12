@@ -14,6 +14,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
     const { loading, error, getTaskDetails, fetching, setFetching, updateTask } = useReservation();
     const [taskId, setTaskId] = useState(null);
 
+    console.log('task', task);
 
     const refreshData = () => {
         fetchTaskDetails();
@@ -49,7 +50,10 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 return;
             }
 
+            console.log('Fetching task details for id:', route.params.taskId);
             const response = await getTaskDetails(route.params.taskId);
+
+            console.log('API response structure:', Object.keys(response).join(', '));
             setTask(response);
 
         } catch (error) {
@@ -132,10 +136,11 @@ export default function TaskDetailsScreen({ route, navigation }) {
             return;
         }
 
+        console.log('Navigating to PropertyProblem with task:', task?._id);
         const navigationParams = {
             taskId: taskId,
-            propertyId: task?.propertyId,
-            problems: task?.propertyProblems
+            propertyId: task?.propertyId?._id,
+            problems: task?.propertyProblems || []
         };
 
         navigation.navigate('PropertyProblem', navigationParams);
@@ -151,25 +156,29 @@ export default function TaskDetailsScreen({ route, navigation }) {
 
 
     const renderCompletedChecklist = () => {
-        const checkListCompleted = task?.propertyDetails?.checkListCompleted;
-        if (!checkListCompleted || checkListCompleted.length === 0) return null;
+        const checkListCompleted = task?.propertyDetails?.checkListCompleted || [];
+
+        if (!checkListCompleted || checkListCompleted.length === 0) {
+            console.log('No completed checklist found');
+            return null;
+        }
+
+        console.log('Found checklist items:', checkListCompleted.length);
 
         return (
             <TouchableOpacity
                 style={styles.detailItem}
                 onPress={() => {
+                    console.log('Navigating to CompletedChecklist with data:', checkListCompleted);
                     navigation.navigate('CompletedChecklist', {
                         checkListCompleted: checkListCompleted
                     });
                 }}
             >
-
-                <Ionicons name="images" size={24} color="#666" />
-                <Text style={styles.detailText}>Cleaning Images</Text>
+                <Ionicons name="list-circle-outline" size={24} color="#666" />
+                <Text style={styles.detailText}>Cleaning Checklist</Text>
                 <Text style={styles.detailCount}>
-                    {checkListCompleted.reduce((total, section) =>
-                        total + section.items.filter(item => item.imageUrl).length, 0
-                    )}
+                    {checkListCompleted.length} section(s)
                 </Text>
                 <Ionicons name="chevron-forward" size={24} color="#666" />
             </TouchableOpacity>
@@ -177,6 +186,18 @@ export default function TaskDetailsScreen({ route, navigation }) {
     };
 
     const CleanerUI = ({ task, isSubmitting, handleAcceptTask, setShowChecklist, renderCompletedChecklist }) => {
+        // Log task structure for debugging
+        console.log('CleanerUI rendering with task:', task?._id);
+
+        // Use propertyId instead of propertyDetails
+        const propertyDetails = task?.propertyId || {};
+        const address = propertyDetails?.address || {};
+        const formattedAddress = address?.display || 'No address available';
+
+        // Use checkInDate and checkOutDate directly
+        const checkInDate = task?.checkInDate;
+        const checkOutDate = task?.checkOutDate;
+
         return (
             <ScrollView style={styles.container}>
                 {/* Header */}
@@ -185,7 +206,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                         Project #{task?._id?.slice(-8) || 'N/A'}
                     </Text>
                     <Text style={styles.projectTitle}>
-                        {task?.propertyDetails?.name || 'Unknown Property'}
+                        {propertyDetails?.name || 'Unknown Property'}
                     </Text>
                 </View>
 
@@ -200,26 +221,26 @@ export default function TaskDetailsScreen({ route, navigation }) {
                     <View style={styles.timeColumn}>
                         <Text style={styles.timeLabel}>Check In</Text>
                         <Text style={styles.timeValue}>
-                            {task?.reservationDetails?.checkIn ?
-                                format(new Date(task.reservationDetails.checkIn), 'h:mm a')
+                            {checkInDate ?
+                                format(new Date(checkInDate), 'h:mm a')
                                 : 'N/A'}
                         </Text>
                         <Text style={styles.dateText}>
-                            {task?.reservationDetails?.checkIn ?
-                                format(new Date(task.reservationDetails.checkIn), 'EEE, MMM d yyyy')
+                            {checkInDate ?
+                                format(new Date(checkInDate), 'EEE, MMM d yyyy')
                                 : 'N/A'}
                         </Text>
                     </View>
                     <View style={styles.timeColumn}>
                         <Text style={styles.timeLabel}>Check Out</Text>
                         <Text style={styles.timeValue}>
-                            {task?.reservationDetails?.checkOut ?
-                                format(new Date(task.reservationDetails.checkOut), 'h:mm a')
+                            {checkOutDate ?
+                                format(new Date(checkOutDate), 'h:mm a')
                                 : 'N/A'}
                         </Text>
                         <Text style={styles.dateText}>
-                            {task?.reservationDetails?.checkOut ?
-                                format(new Date(task.reservationDetails.checkOut), 'EEE, MMM d yyyy')
+                            {checkOutDate ?
+                                format(new Date(checkOutDate), 'EEE, MMM d yyyy')
                                 : 'N/A'}
                         </Text>
                     </View>
@@ -246,7 +267,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                     <TouchableOpacity style={styles.detailItem}>
                         <Ionicons name="location" size={24} color="#666" />
                         <Text style={styles.detailText}>
-                            {task?.propertyDetails?.address || 'No address available'}
+                            {formattedAddress || 'No address available'}
                         </Text>
                     </TouchableOpacity>
 
@@ -263,7 +284,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                         <Text style={styles.detailText}>Access Code</Text>
                         <View style={styles.codeContainer}>
                             <Text style={styles.codeText}>
-                                {task?.propertyDetails?.access_code || 'N/A'}
+                                {propertyDetails?.access_code || 'N/A'}
                             </Text>
                         </View>
                     </View>
@@ -322,6 +343,14 @@ export default function TaskDetailsScreen({ route, navigation }) {
     };
 
     const MaintenanceUI = ({ task, isSubmitting, handleAcceptTask }) => {
+        // Log task structure for debugging
+        console.log('MaintenanceUI rendering with task:', task?._id);
+
+        // Use propertyId instead of propertyDetails
+        const propertyDetails = task?.propertyId || {};
+        const address = propertyDetails?.address || {};
+        const formattedAddress = address?.display || 'No address available';
+
         return (
             <ScrollView style={styles.container}>
                 {/* Header */}
@@ -330,7 +359,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                         Maintenance #{task?._id?.slice(-8) || 'N/A'}
                     </Text>
                     <Text style={styles.projectTitle}>
-                        {task?.propertyDetails?.name || 'Unknown Property'}
+                        {propertyDetails?.name || 'Unknown Property'}
                     </Text>
                 </View>
 
@@ -371,7 +400,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                     <TouchableOpacity style={styles.detailItem}>
                         <Ionicons name="location" size={24} color="#666" />
                         <Text style={styles.detailText}>
-                            {task?.propertyDetails?.address || 'No address available'}
+                            {formattedAddress || 'No address available'}
                         </Text>
                     </TouchableOpacity>
 
@@ -380,7 +409,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                         <Text style={styles.detailText}>Access Code</Text>
                         <View style={styles.codeContainer}>
                             <Text style={styles.codeText}>
-                                {task?.propertyDetails?.access_code || 'N/A'}
+                                {propertyDetails?.access_code || 'N/A'}
                             </Text>
                         </View>
                     </View>
@@ -472,7 +501,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                         onClose={() => setShowChecklist(false)}
                         onComplete={handleCompleteChecklist}
                         loading={isSubmitting}
-                        checkList={task?.propertyDetails?.check_list || []}
+                        checkList={task?.propertyId?.check_list || []}
                     />
                 </>
             )}

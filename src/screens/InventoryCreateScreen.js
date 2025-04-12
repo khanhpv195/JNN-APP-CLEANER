@@ -6,38 +6,30 @@ import {
     TextInput,
     TouchableOpacity,
     ScrollView,
-    Image,
     ActivityIndicator,
     SafeAreaView,
     KeyboardAvoidingView,
     Platform,
     Modal,
-    FlatList
+    FlatList,
+    Alert
 } from 'react-native';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, AntDesign } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '@/shared/theme';
 import { ThemedText } from '@/components';
 import { useCreateInventory } from '@/hooks/useInventory';
 import { useGetProperty } from '@/hooks/useProperty';
-import { useUploadImages } from './../hooks/useUploadImages';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
-import {
-    handleImagePicker,
-    handleImageUpload
-} from '@/utils/imageUtils';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
-const initialFormState = {
-    name: '',
+const initialItemState = {
+    productName: '',
     description: '',
-    price: '',
     quantity: '1',
-    status: 'AVAILABLE',
-    propertyId: '',
-    propertyName: '',
-    image: null,
-    imageAsset: null
+    priorityLevel: 'Normal',
+    status: 'AVAILABLE'
 };
 
 const InventoryCreateScreen = () => {
@@ -46,166 +38,201 @@ const InventoryCreateScreen = () => {
     const { t } = useTranslation();
     const { createInventory, isCreating } = useCreateInventory();
     const { properties, isLoading: isLoadingProperties } = useGetProperty();
-    const { mutateAsync: uploadImages, isLoading: isUploading } = useUploadImages();
 
-    const [formData, setFormData] = useState(initialFormState);
+    const [propertyId, setPropertyId] = useState('');
+    const [propertyName, setPropertyName] = useState('');
+    const [items, setItems] = useState([{ ...initialItemState, id: Date.now().toString() }]);
     const [errors, setErrors] = useState({});
-    const [imageLoading, setImageLoading] = useState(false);
     const [isPropertyModalVisible, setIsPropertyModalVisible] = useState(false);
+    const [isPriorityModalVisible, setIsPriorityModalVisible] = useState(false);
+    const [currentItemIndex, setCurrentItemIndex] = useState(0);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [requestedDate, setRequestedDate] = useState(new Date());
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const priorityOptions = [
+        { label: 'Urgent', value: 'Urgent' },
+        { label: 'Normal', value: 'Normal' },
+        { label: 'Periodic', value: 'Periodic' }
+    ];
 
     // Reset form data when screen gains focus
     useFocusEffect(
         React.useCallback(() => {
             // Reset khi mount
-            setFormData({ ...initialFormState });
+            setPropertyId('');
+            setPropertyName('');
+            setItems([{ ...initialItemState, id: Date.now().toString() }]);
             setErrors({});
-            setImageLoading(false);
             setIsPropertyModalVisible(false);
+            setIsPriorityModalVisible(false);
+            setRequestedDate(new Date());
 
             return () => {
                 // Reset khi unmount
-                setFormData({ ...initialFormState });
+                setPropertyId('');
+                setPropertyName('');
+                setItems([{ ...initialItemState, id: Date.now().toString() }]);
                 setErrors({});
-                setImageLoading(false);
                 setIsPropertyModalVisible(false);
+                setIsPriorityModalVisible(false);
+                setRequestedDate(new Date());
             };
         }, [])
     );
 
-    // Format price to display in USD
-    const formatPrice = (value) => {
-        if (!value) return '';
-
-        // Simply add dollar sign, don't format or parse the number
-        return `$${value}`;
+    const addItem = () => {
+        setItems([...items, { ...initialItemState, id: Date.now().toString() }]);
     };
 
-    // Handle price input change - simple approach without formatters
-    const handlePriceInput = (value) => {
-        // Remove $ symbol if present
-        if (value.startsWith('$')) {
-            value = value.substring(1);
+    const removeItem = (id) => {
+        if (items.length <= 1) {
+            Alert.alert("Cannot delete", "At least one item is required");
+            return;
         }
-
-        // Allow any digits and one decimal point
-        const regex = /^[0-9]*\.?[0-9]*$/;
-        if (regex.test(value) || value === '') {
-            setFormData(prev => ({ ...prev, price: value }));
-        }
+        setItems(items.filter(item => item.id !== id));
     };
 
-    const handleImageSelection = () => {
-        handleImagePicker({
-            setImageLoading,
-            setFormData,
-        });
+    const updateItem = (id, field, value) => {
+        setItems(items.map(item =>
+            item.id === id ? { ...item, [field]: value } : item
+        ));
     };
 
     const validate = () => {
         const newErrors = {};
 
-        if (!formData.name.trim()) {
-            newErrors.name = 'Name is required';
-        }
-
-        if (!formData.description.trim()) {
-            newErrors.description = 'Description is required';
-        }
-
-        if (!formData.price) {
-            newErrors.price = 'Price is required';
-        } else if (isNaN(parseFloat(formData.price))) {
-            newErrors.price = 'Price must be a valid number';
-        } else if (parseFloat(formData.price) < 0) {
-            newErrors.price = 'Price cannot be negative';
-        }
-
-        if (!formData.quantity) {
-            newErrors.quantity = 'Quantity is required';
-        } else if (isNaN(parseInt(formData.quantity))) {
-            newErrors.quantity = 'Quantity must be a valid number';
-        } else if (parseInt(formData.quantity) <= 0) {
-            newErrors.quantity = 'Quantity must be greater than zero';
-        }
-
-        if (!formData.propertyId) {
+        if (!propertyId) {
             newErrors.propertyId = 'Property is required';
+        }
+
+        let hasItemErrors = false;
+        items.forEach((item, index) => {
+            if (!item.productName.trim()) {
+                newErrors[`item_${index}_productName`] = 'Product name is required';
+                hasItemErrors = true;
+            }
+
+            if (!item.description.trim()) {
+                newErrors[`item_${index}_description`] = 'Description is required';
+                hasItemErrors = true;
+            }
+
+            if (!item.quantity) {
+                newErrors[`item_${index}_quantity`] = 'Quantity is required';
+                hasItemErrors = true;
+            } else if (isNaN(parseInt(item.quantity))) {
+                newErrors[`item_${index}_quantity`] = 'Quantity must be a valid number';
+                hasItemErrors = true;
+            } else if (parseInt(item.quantity) <= 0) {
+                newErrors[`item_${index}_quantity`] = 'Quantity must be greater than zero';
+                hasItemErrors = true;
+            }
+        });
+
+        if (hasItemErrors) {
+            newErrors.items = 'Please fix the errors in your items';
         }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
+    const formatDate = (date) => {
+        return date.toISOString().split('T')[0];
+    };
+
+    const handleDateChange = (event, selectedDate) => {
+        setShowDatePicker(false);
+        if (selectedDate) {
+            setRequestedDate(selectedDate);
+        }
+    };
+
+    const handleShowDatePicker = () => {
+        setShowDatePicker(true);
+    };
+
     const handleSubmit = async () => {
         if (!validate()) return;
 
+        // Set local submitting state to true to show loading indicators
+        setIsSubmitting(true);
+
         try {
-            let imageUrl = null;
+            // Prepare inventory items data
+            const inventoryItems = items.map(item => ({
+                name: item.productName || '',
+                description: item.description || '',
+                quantity: parseInt(item.quantity || '1'),
+                status: item.status || 'AVAILABLE',
+                propertyId: propertyId || '',
+                priorityLevel: item.priorityLevel || 'Normal',
+                requestedDate: formatDate(requestedDate)
+            }));
 
-            if (formData.image) {
-                try {
-                    imageUrl = await handleImageUpload({
-                        imageUri: formData.image,
-                        setImageLoading,
-                        uploadImages
-                    });
+            // Send all items in one API request
+            console.log('Sending inventory items:', JSON.stringify({ inventoryItems }));
 
-                    if (!imageUrl) {
-                        Toast.show({
-                            type: 'error',
-                            text1: 'Error',
-                            text2: 'Failed to get image URL'
-                        });
-                        return;
-                    }
-                } catch (uploadError) {
-                    console.error('Image upload error:', uploadError);
+            try {
+                // Create a single payload with all items
+                const payload = {
+                    inventoryItems: inventoryItems
+                };
+
+                // Make a single API call with all items
+                const response = await createInventory(payload);
+                console.log('API response:', JSON.stringify(response));
+
+                // Set submitting state to false once we have response
+                setIsSubmitting(false);
+
+                // Check if response exists
+                if (!response) {
                     Toast.show({
                         type: 'error',
                         text1: 'Error',
-                        text2: 'Failed to upload image'
+                        text2: 'No response received from the server'
                     });
                     return;
                 }
-            }
 
-            const apiData = {
-                name: formData.name || '',
-                description: formData.description || '',
-                price: parseFloat(formData.price || '0'),
-                quantity: parseInt(formData.quantity || '1'),
-                status: formData.status || 'AVAILABLE',
-                propertyId: formData.propertyId || ''
-            };
+                // Check for success
+                if (response.success) {
+                    Toast.show({
+                        type: 'success',
+                        text1: 'Success',
+                        text2: 'All inventory items created successfully'
+                    });
 
-            if (imageUrl) {
-                apiData.image = imageUrl;
-            }
-
-            const response = await createInventory(apiData);
-
-            if (response && response.success) {
-                Toast.show({
-                    type: 'success',
-                    text1: 'Success',
-                    text2: 'Inventory item created successfully'
-                });
-
-                // Reset form và navigate
-                setFormData({ ...initialFormState });
-                setErrors({});
-                setImageLoading(false);
-                setIsPropertyModalVisible(false);
-                navigation.goBack();
-            } else {
+                    // Reset form and navigate
+                    setPropertyId('');
+                    setPropertyName('');
+                    setItems([{ ...initialItemState, id: Date.now().toString() }]);
+                    setErrors({});
+                    setRequestedDate(new Date());
+                    navigation.goBack();
+                } else {
+                    // Display error message
+                    Toast.show({
+                        type: 'error',
+                        text1: 'Error',
+                        text2: response.message || 'Failed to create inventory items'
+                    });
+                }
+            } catch (apiError) {
+                setIsSubmitting(false);
+                console.error('API error:', apiError);
                 Toast.show({
                     type: 'error',
                     text1: 'Error',
-                    text2: 'Failed to create inventory item'
+                    text2: apiError.message || 'Failed to process the request'
                 });
             }
         } catch (error) {
+            setIsSubmitting(false);
             console.error('Inventory creation error:', error);
+            console.error('Error details:', JSON.stringify(error, null, 2));
             Toast.show({
                 type: 'error',
                 text1: 'Error',
@@ -215,12 +242,14 @@ const InventoryCreateScreen = () => {
     };
 
     const handleSelectProperty = (property) => {
-        setFormData(prev => ({
-            ...prev,
-            propertyId: property._id,
-            propertyName: property.name
-        }));
+        setPropertyId(property._id);
+        setPropertyName(property.name);
         setIsPropertyModalVisible(false);
+    };
+
+    const handleSelectPriority = (priority) => {
+        updateItem(items[currentItemIndex].id, 'priorityLevel', priority.value);
+        setIsPriorityModalVisible(false);
     };
 
     const renderPropertyItem = ({ item }) => (
@@ -232,6 +261,15 @@ const InventoryCreateScreen = () => {
             <ThemedText style={dynamicStyles.propertyAddress} numberOfLines={1}>
                 {item.address}
             </ThemedText>
+        </TouchableOpacity>
+    );
+
+    const renderPriorityItem = ({ item }) => (
+        <TouchableOpacity
+            style={dynamicStyles.propertyItem}
+            onPress={() => handleSelectPriority(item)}
+        >
+            <ThemedText style={dynamicStyles.propertyName}>{item.label}</ThemedText>
         </TouchableOpacity>
     );
 
@@ -269,6 +307,42 @@ const InventoryCreateScreen = () => {
             </View>
         </Modal>
     );
+
+    const PriorityModal = () => (
+        <Modal
+            visible={isPriorityModalVisible}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setIsPriorityModalVisible(false)}
+        >
+            <View style={dynamicStyles.modalContainer}>
+                <View style={dynamicStyles.modalContent}>
+                    <View style={dynamicStyles.modalHeader}>
+                        <ThemedText style={dynamicStyles.modalTitle}>Select Priority Level</ThemedText>
+                        <TouchableOpacity onPress={() => setIsPriorityModalVisible(false)}>
+                            <Ionicons name="close" size={24} color={theme.text} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <FlatList
+                        data={priorityOptions}
+                        renderItem={renderPriorityItem}
+                        keyExtractor={item => item.value}
+                    />
+                </View>
+            </View>
+        </Modal>
+    );
+
+    const getItemErrorText = (index, field) => {
+        const errorKey = `item_${index}_${field}`;
+        return errors[errorKey] ? <Text style={dynamicStyles.errorText}>{errors[errorKey]}</Text> : null;
+    };
+
+    const getPriorityLabelByValue = (value) => {
+        const priority = priorityOptions.find(option => option.value === value);
+        return priority ? priority.label : 'Normal';
+    };
 
     const dynamicStyles = StyleSheet.create({
         container: {
@@ -317,49 +391,30 @@ const InventoryCreateScreen = () => {
             fontSize: 12,
             marginTop: 4,
         },
-        imageSelector: {
-            backgroundColor: theme.card,
-            borderRadius: 8,
-            borderWidth: 1,
-            borderColor: theme.border || '#E5E7EB',
-            height: 200,
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginBottom: 16,
-            overflow: 'hidden',
-        },
-        image: {
-            width: '100%',
-            height: '100%',
-            resizeMode: 'cover',
-        },
         submitButton: {
             backgroundColor: theme.primary,
             borderRadius: 8,
             padding: 16,
             alignItems: 'center',
             marginTop: 16,
+            marginBottom: 16,
         },
         submitButtonText: {
             color: '#FFFFFF',
             fontWeight: 'bold',
             fontSize: 16,
         },
-        imageOverlay: {
-            ...StyleSheet.absoluteFillObject,
-            backgroundColor: 'rgba(0,0,0,0.3)',
-            justifyContent: 'center',
+        propertySelector: {
+            backgroundColor: theme.card,
+            borderRadius: 8,
+            padding: 12,
+            borderWidth: 1,
+            borderColor: theme.border || '#E5E7EB',
+            flexDirection: 'row',
+            justifyContent: 'space-between',
             alignItems: 'center',
         },
-        removeImageButton: {
-            position: 'absolute',
-            right: 8,
-            top: 8,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            borderRadius: 16,
-            padding: 4,
-        },
-        propertySelector: {
+        dateSelector: {
             backgroundColor: theme.card,
             borderRadius: 8,
             padding: 12,
@@ -425,6 +480,51 @@ const InventoryCreateScreen = () => {
         },
         placeholderText: {
             color: theme.textSecondary || '#666',
+        },
+        itemContainer: {
+            backgroundColor: theme.card,
+            borderRadius: 8,
+            padding: 16,
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: theme.border || '#E5E7EB',
+        },
+        itemHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 12,
+        },
+        itemTitle: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: theme.text,
+        },
+        removeButton: {
+            padding: 6,
+        },
+        addItemButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.card,
+            borderRadius: 8,
+            padding: 12,
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: theme.border || '#E5E7EB',
+            justifyContent: 'center',
+        },
+        addItemButtonText: {
+            marginLeft: 8,
+            color: theme.primary,
+            fontWeight: '500',
+        },
+        sectionTitle: {
+            fontSize: 18,
+            fontWeight: '600',
+            color: theme.text,
+            marginTop: 8,
+            marginBottom: 16,
         }
     });
 
@@ -437,7 +537,7 @@ const InventoryCreateScreen = () => {
                 >
                     <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
                 </TouchableOpacity>
-                <ThemedText style={dynamicStyles.headerTitle}>Create Inventory Item</ThemedText>
+                <ThemedText style={dynamicStyles.headerTitle}>Inventory Request</ThemedText>
             </View>
 
             <KeyboardAvoidingView
@@ -445,101 +545,7 @@ const InventoryCreateScreen = () => {
                 style={{ flex: 1 }}
             >
                 <ScrollView style={dynamicStyles.content}>
-                    <TouchableOpacity
-                        style={dynamicStyles.imageSelector}
-                        onPress={handleImageSelection}
-                        disabled={imageLoading}
-                    >
-                        {formData.image ? (
-                            <>
-                                <Image
-                                    source={{ uri: formData.image }}
-                                    style={dynamicStyles.image}
-                                />
-                                <TouchableOpacity
-                                    style={dynamicStyles.removeImageButton}
-                                    onPress={() => setFormData(prev => ({ ...prev, image: null, imageAsset: null }))}
-                                >
-                                    <Ionicons name="close-circle" size={24} color="#FFFFFF" />
-                                </TouchableOpacity>
-                                <View style={dynamicStyles.imageOverlay}>
-                                    <Ionicons name="camera" size={32} color="#FFFFFF" />
-                                </View>
-                            </>
-                        ) : imageLoading ? (
-                            <ActivityIndicator size="large" color={theme.primary} />
-                        ) : (
-                            <>
-                                <Ionicons name="camera-outline" size={48} color={theme.textSecondary || '#666'} />
-                                <ThemedText style={{ marginTop: 8 }}>Add Image</ThemedText>
-                            </>
-                        )}
-                    </TouchableOpacity>
-
-                    <View style={dynamicStyles.formGroup}>
-                        <ThemedText style={dynamicStyles.label}>Name</ThemedText>
-                        <TextInput
-                            style={[
-                                dynamicStyles.input,
-                                errors.name && dynamicStyles.inputError
-                            ]}
-                            placeholder="Enter inventory name"
-                            placeholderTextColor={theme.textSecondary || '#666'}
-                            value={formData.name}
-                            onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
-                        />
-                        {errors.name && <Text style={dynamicStyles.errorText}>{errors.name}</Text>}
-                    </View>
-
-                    <View style={dynamicStyles.formGroup}>
-                        <ThemedText style={dynamicStyles.label}>Description</ThemedText>
-                        <TextInput
-                            style={[
-                                dynamicStyles.input,
-                                errors.description && dynamicStyles.inputError,
-                                { height: 100, textAlignVertical: 'top' }
-                            ]}
-                            placeholder="Enter description"
-                            placeholderTextColor={theme.textSecondary || '#666'}
-                            value={formData.description}
-                            onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
-                            multiline
-                            numberOfLines={4}
-                        />
-                        {errors.description && <Text style={dynamicStyles.errorText}>{errors.description}</Text>}
-                    </View>
-
-                    <View style={dynamicStyles.formGroup}>
-                        <ThemedText style={dynamicStyles.label}>Price (USD)</ThemedText>
-                        <TextInput
-                            style={[
-                                dynamicStyles.input,
-                                errors.price && dynamicStyles.inputError
-                            ]}
-                            placeholder="$0.00"
-                            placeholderTextColor={theme.textSecondary || '#666'}
-                            value={formatPrice(formData.price)}
-                            onChangeText={handlePriceInput}
-                            keyboardType="decimal-pad"
-                        />
-                        {errors.price && <Text style={dynamicStyles.errorText}>{errors.price}</Text>}
-                    </View>
-
-                    <View style={dynamicStyles.formGroup}>
-                        <ThemedText style={dynamicStyles.label}>Quantity</ThemedText>
-                        <TextInput
-                            style={[
-                                dynamicStyles.input,
-                                errors.quantity && dynamicStyles.inputError
-                            ]}
-                            placeholder="Enter quantity"
-                            placeholderTextColor={theme.textSecondary || '#666'}
-                            value={formData.quantity.toString()}
-                            onChangeText={(text) => setFormData(prev => ({ ...prev, quantity: text }))}
-                            keyboardType="number-pad"
-                        />
-                        {errors.quantity && <Text style={dynamicStyles.errorText}>{errors.quantity}</Text>}
-                    </View>
+                    <ThemedText style={dynamicStyles.sectionTitle}>General Information</ThemedText>
 
                     <View style={dynamicStyles.formGroup}>
                         <ThemedText style={dynamicStyles.label}>Property</ThemedText>
@@ -551,31 +557,144 @@ const InventoryCreateScreen = () => {
                             onPress={() => setIsPropertyModalVisible(true)}
                         >
                             <Text
-                                style={formData.propertyName ? dynamicStyles.selectedPropertyText : dynamicStyles.placeholderText}
+                                style={propertyName ? dynamicStyles.selectedPropertyText : dynamicStyles.placeholderText}
                                 numberOfLines={1}
                             >
-                                {formData.propertyName || 'Select property'}
+                                {propertyName || 'Select property'}
                             </Text>
                             <MaterialIcons name="arrow-drop-down" size={24} color={theme.textSecondary || '#666'} />
                         </TouchableOpacity>
                         {errors.propertyId && <Text style={dynamicStyles.errorText}>{errors.propertyId}</Text>}
                     </View>
 
+                    <View style={dynamicStyles.formGroup}>
+                        <ThemedText style={dynamicStyles.label}>Requested Date</ThemedText>
+                        <TouchableOpacity
+                            style={dynamicStyles.dateSelector}
+                            onPress={handleShowDatePicker}
+                        >
+                            <Text style={dynamicStyles.selectedPropertyText}>
+                                {formatDate(requestedDate)}
+                            </Text>
+                            <MaterialIcons name="date-range" size={24} color={theme.textSecondary || '#666'} />
+                        </TouchableOpacity>
+                        {showDatePicker && (
+                            <DateTimePicker
+                                value={requestedDate}
+                                mode="date"
+                                display="default"
+                                onChange={handleDateChange}
+                            />
+                        )}
+                    </View>
+
+                    <ThemedText style={dynamicStyles.sectionTitle}>Item List</ThemedText>
+
+                    {errors.items && <Text style={dynamicStyles.errorText}>{errors.items}</Text>}
+
+                    {items.map((item, index) => (
+                        <View key={item.id} style={dynamicStyles.itemContainer}>
+                            <View style={dynamicStyles.itemHeader}>
+                                <Text style={dynamicStyles.itemTitle}>Item #{index + 1}</Text>
+                                <TouchableOpacity
+                                    style={dynamicStyles.removeButton}
+                                    onPress={() => removeItem(item.id)}
+                                >
+                                    <AntDesign name="closecircle" size={22} color="#DC2626" />
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={dynamicStyles.formGroup}>
+                                <ThemedText style={dynamicStyles.label}>Product Name</ThemedText>
+                                <TextInput
+                                    style={[
+                                        dynamicStyles.input,
+                                        getItemErrorText(index, 'productName') && dynamicStyles.inputError
+                                    ]}
+                                    placeholder="Enter product name"
+                                    placeholderTextColor={theme.textSecondary || '#666'}
+                                    value={item.productName}
+                                    onChangeText={(text) => updateItem(item.id, 'productName', text)}
+                                />
+                                {getItemErrorText(index, 'productName')}
+                            </View>
+
+                            <View style={dynamicStyles.formGroup}>
+                                <ThemedText style={dynamicStyles.label}>Description</ThemedText>
+                                <TextInput
+                                    style={[
+                                        dynamicStyles.input,
+                                        getItemErrorText(index, 'description') && dynamicStyles.inputError,
+                                        { height: 80, textAlignVertical: 'top' }
+                                    ]}
+                                    placeholder="Enter description"
+                                    placeholderTextColor={theme.textSecondary || '#666'}
+                                    value={item.description}
+                                    onChangeText={(text) => updateItem(item.id, 'description', text)}
+                                    multiline
+                                    numberOfLines={3}
+                                />
+                                {getItemErrorText(index, 'description')}
+                            </View>
+
+                            <View style={dynamicStyles.formGroup}>
+                                <ThemedText style={dynamicStyles.label}>Quantity</ThemedText>
+                                <TextInput
+                                    style={[
+                                        dynamicStyles.input,
+                                        getItemErrorText(index, 'quantity') && dynamicStyles.inputError
+                                    ]}
+                                    placeholder="Enter quantity"
+                                    placeholderTextColor={theme.textSecondary || '#666'}
+                                    value={item.quantity.toString()}
+                                    onChangeText={(text) => updateItem(item.id, 'quantity', text)}
+                                    keyboardType="number-pad"
+                                />
+                                {getItemErrorText(index, 'quantity')}
+                            </View>
+
+                            <View style={dynamicStyles.formGroup}>
+                                <ThemedText style={dynamicStyles.label}>Priority Level</ThemedText>
+                                <TouchableOpacity
+                                    style={dynamicStyles.propertySelector}
+                                    onPress={() => {
+                                        setCurrentItemIndex(index);
+                                        setIsPriorityModalVisible(true);
+                                    }}
+                                >
+                                    <Text style={dynamicStyles.selectedPropertyText}>
+                                        {getPriorityLabelByValue(item.priorityLevel)}
+                                    </Text>
+                                    <MaterialIcons name="arrow-drop-down" size={24} color={theme.textSecondary || '#666'} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    ))}
+
+                    <TouchableOpacity
+                        style={dynamicStyles.addItemButton}
+                        onPress={addItem}
+                    >
+                        <AntDesign name="plus" size={16} color={theme.primary} />
+                        <Text style={dynamicStyles.addItemButtonText}>Add Item</Text>
+                    </TouchableOpacity>
+
                     <TouchableOpacity
                         style={dynamicStyles.submitButton}
                         onPress={handleSubmit}
-                        disabled={isCreating || imageLoading || isUploading}
+                        disabled={isCreating || isSubmitting}
                     >
-                        {isCreating || imageLoading || isUploading ? (
+                        {isCreating || isSubmitting ? (
                             <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
-                            <Text style={dynamicStyles.submitButtonText}>Create Inventory Item</Text>
+                            <Text style={dynamicStyles.submitButtonText}>Create Request</Text>
                         )}
                     </TouchableOpacity>
                 </ScrollView>
             </KeyboardAvoidingView>
 
             <PropertyModal />
+            <PriorityModal />
         </SafeAreaView>
     );
 };
