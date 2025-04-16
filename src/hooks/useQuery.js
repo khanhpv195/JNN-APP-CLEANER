@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '@env';
 
 // Base API configuration
-const GATEWAY_URL = API_URL;
+const GATEWAY_URL = API_URL || 'https://api.swapbnb.io/moon';
 
 // Generate api url
 const generateApiUrl = ({ endpoint }) => {

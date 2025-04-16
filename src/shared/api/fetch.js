@@ -11,7 +11,7 @@ let isHandlingSessionExpiration = false;
 const DEBUG_API = true;
 
 // Ensure GATEWAY_URL doesn't end with a slash
-const GATEWAY_URL = API_URL;
+const GATEWAY_URL = API_URL || 'https://api.swapbnb.io/moon';
 
 console.log('GATEWAY_URL:', GATEWAY_URL);
 

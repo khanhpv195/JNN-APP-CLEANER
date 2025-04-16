@@ -38,7 +38,7 @@ export async function setupNotificationChannels() {
                 vibrationPattern: [0, 100, 200, 100],
                 sound: 'default',
             });
-            
+
             // Create channel for maintenance notifications
             await Notifications.setNotificationChannelAsync('maintenance', {
                 name: 'Maintenance Notifications',
@@ -50,7 +50,7 @@ export async function setupNotificationChannels() {
                 enableVibrate: true,
                 enableLights: true,
             });
-            
+
             console.log('Expo notification channels created successfully');
         } catch (error) {
             console.error('Failed to create notification channels:', error);
@@ -61,74 +61,124 @@ export async function setupNotificationChannels() {
 // Register device for push notifications and get Expo Push Token
 export async function registerForPushNotificationsAsync() {
     let token;
-    
+
     try {
+        console.log('Starting push notification registration...');
+
         // Only proceed on physical devices
         if (!Device.isDevice) {
             console.log('Push notifications are only available on physical devices');
             return null;
         }
-        
-        // Check if we already have a stored token
-        const storedToken = await AsyncStorage.getItem('pushNotificationToken');
-        if (storedToken) {
-            console.log('Found stored push token:', storedToken);
-            return storedToken;
+
+        // Don't use stored token in production builds to ensure fresh token each time
+        if (__DEV__) {
+            // Check if we already have a stored token (only in development)
+            const storedToken = await AsyncStorage.getItem('pushNotificationToken');
+            if (storedToken) {
+                console.log('Found stored push token:', storedToken);
+                return storedToken;
+            }
         }
-        
+
         // Set up notification channels for Android
         if (Platform.OS === 'android') {
             await setupNotificationChannels();
         }
-        
+
         // Check current permission status
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
-        
+
+        console.log('Current notification permission status:', existingStatus);
+
         // Request permission if not already granted
         if (existingStatus !== 'granted') {
             console.log('Requesting notification permission...');
             const { status } = await Notifications.requestPermissionsAsync();
             finalStatus = status;
+            console.log('New permission status:', finalStatus);
         }
-        
+
         // Exit if permission denied
         if (finalStatus !== 'granted') {
             console.log('Failed to get push token: Permission denied');
             return null;
         }
-        
-        // Get the Expo push token
-        console.log('Getting Expo push token...');
-        console.log('Project ID:', Constants.expoConfig?.extra?.eas?.projectId);
-        
-        // Try to get token with or without projectId
+
+        // Get the projectId - try multiple ways to access it based on environment
+        let projectId = null;
+
+        // Try to get projectId from Constants (structure might differ between environments)
+        if (Constants.expoConfig?.extra?.eas?.projectId) {
+            projectId = Constants.expoConfig.extra.eas.projectId;
+            console.log('Found projectId in Constants.expoConfig.extra.eas:', projectId);
+        } else if (Constants.manifest?.extra?.eas?.projectId) {
+            projectId = Constants.manifest.extra.eas.projectId;
+            console.log('Found projectId in Constants.manifest.extra.eas:', projectId);
+        } else if (Constants.manifest2?.extra?.expoClient?.projectId) {
+            projectId = Constants.manifest2.extra.expoClient.projectId;
+            console.log('Found projectId in Constants.manifest2.extra.expoClient:', projectId);
+        } else if (Constants.expoConfig?.extra?.expoClient?.projectId) {
+            projectId = Constants.expoConfig.extra.expoClient.projectId;
+            console.log('Found projectId in Constants.expoConfig.extra.expoClient:', projectId);
+        } else {
+            console.warn('Could not find projectId in Constants. Available Constants:', JSON.stringify(Constants, null, 2));
+        }
+
+        // Log our attempt to get the Expo push token
+        console.log('Getting Expo push token with projectId:', projectId);
+
+        // Try different methods to get token based on environment
         try {
-            // First try with projectId
-            token = (await Notifications.getExpoPushTokenAsync({
-                projectId: Constants.expoConfig?.extra?.eas?.projectId,
-            })).data;
-        } catch (projectIdError) {
-            console.warn('Error getting token with projectId:', projectIdError);
-            
-            // Try without projectId as fallback
-            try {
+            if (projectId) {
+                // Try with projectId first if available
+                console.log('Attempting to get token with projectId');
+                token = (await Notifications.getExpoPushTokenAsync({
+                    projectId: projectId
+                })).data;
+                console.log('Successfully got token with projectId');
+            } else {
+                // Fallback without projectId
+                console.log('Attempting to get token without projectId');
                 token = (await Notifications.getExpoPushTokenAsync()).data;
-            } catch (tokenError) {
-                console.error('Failed to get push token:', tokenError);
+                console.log('Successfully got token without projectId');
+            }
+        } catch (firstError) {
+            console.error('First attempt to get push token failed:', firstError);
+
+            // Try the opposite approach
+            try {
+                if (projectId) {
+                    // If using projectId failed, try without it
+                    console.log('First attempt with projectId failed, trying without projectId');
+                    token = (await Notifications.getExpoPushTokenAsync()).data;
+                } else {
+                    // If not using projectId failed, try hardcoding the JNN CRM projectId
+                    // This is just a fallback - replace with your actual project ID
+                    console.log('First attempt without projectId failed, trying with hardcoded projectId');
+                    token = (await Notifications.getExpoPushTokenAsync({
+                        projectId: 'jnn-crm' // Replace with your Expo project ID
+                    })).data;
+                }
+            } catch (secondError) {
+                console.error('All attempts to get push token failed:', secondError);
                 return null;
             }
         }
-        
-        console.log('Expo Push Token obtained:', token);
-        
-        // Save tokens
+
         if (token) {
+            console.log('Expo Push Token obtained:', token);
+
+            // Save token to AsyncStorage
             await AsyncStorage.setItem('pushNotificationToken', token);
             console.log('Push token saved to AsyncStorage');
+
+            return token;
+        } else {
+            console.error('Failed to obtain Expo Push Token');
+            return null;
         }
-        
-        return token;
     } catch (error) {
         console.error('Error in registerForPushNotificationsAsync:', error);
         return null;
@@ -190,14 +240,14 @@ export async function testNotification() {
     try {
         // Get the token first - this will also check permissions
         const token = await registerForPushNotificationsAsync();
-        
+
         if (!token) {
             return {
                 success: false,
                 message: 'Could not get notification token. Please check permissions.'
             };
         }
-        
+
         // With Expo Go, we should have an Expo push token
         const notificationId = await Notifications.scheduleNotificationAsync({
             content: {
@@ -207,9 +257,9 @@ export async function testNotification() {
             },
             trigger: null, // Send immediately
         });
-        
+
         console.log('Test notification sent with ID:', notificationId);
-        
+
         return {
             success: true,
             message: 'Expo push token obtained and test notification sent',

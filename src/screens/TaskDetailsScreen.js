@@ -78,10 +78,12 @@ export default function TaskDetailsScreen({ route, navigation }) {
     };
 
     const showToast = (message) => {
+        if (!message) return;
+
         if (Platform.OS === 'android') {
             ToastAndroid.show(message, ToastAndroid.SHORT);
         } else {
-            Alert.alert(message);
+            Alert.alert('Notification', message);
         }
     };
 
@@ -93,8 +95,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
             });
 
             if (response?.success) {
-                setTask(response.data);
-                showToast(response.message);
+                showToast(response.message || 'Task accepted successfully');
+                fetchTaskDetails(); // Refresh the data
             } else {
                 showToast(response.message || 'Failed to accept task');
             }
@@ -115,9 +117,9 @@ export default function TaskDetailsScreen({ route, navigation }) {
             });
 
             if (response?.success) {
-                setTask(response.data);
                 setShowChecklist(false);
-                showToast(response.message);
+                showToast(response.message || 'Checklist completed successfully');
+                fetchTaskDetails(); // Refresh the data
             } else {
                 showToast(response.message || 'Failed to complete checklist');
             }
@@ -156,7 +158,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
 
 
     const renderCompletedChecklist = () => {
-        const checkListCompleted = task?.propertyDetails?.checkListCompleted || [];
+        const checkListCompleted = task?.propertyId?.checkListCompleted || [];
 
         if (!checkListCompleted || checkListCompleted.length === 0) {
             console.log('No completed checklist found');
