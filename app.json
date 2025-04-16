@@ -62,7 +62,7 @@
       }
     },
     "updates": {
-      "url": "",
+      "url": "https://u.expo.dev/232c3525-6718-4a07-adce-64cad5b555d8",
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
