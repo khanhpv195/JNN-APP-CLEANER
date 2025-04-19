@@ -7,26 +7,13 @@ import { STATUS } from '../constants/status';
 
 export default function RequestScreen() {
     const navigation = useNavigation();
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    const [selectedMonth, setSelectedMonth] = useState(new Date());
-    const [calendarDays, setCalendarDays] = useState([]);
-    const [months, setMonths] = useState([]);
-    const [calendarExpanded, setCalendarExpanded] = useState(false);
     const { cleaningTasks, loading, error, updateTask, fetchCleaningTasks, setFetching } = useReservation();
-    const screenWidth = Dimensions.get('window').width;
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const refreshData = () => {
-        // Force refresh by using a new Date object
-        const dateToFetch = new Date(selectedDate);
-        dateToFetch.setHours(0, 0, 0, 0);
-
         // Make sure we explicitly pass the PENDING status
         console.log('Refreshing with status:', STATUS.PENDING);
-        fetchCleaningTasks(dateToFetch, STATUS.PENDING);
-
-        generateCalendarDays(selectedDate);
-        generateMonths(selectedMonth);
+        fetchCleaningTasks(null, STATUS.PENDING);
     };
 
     useFocusEffect(
@@ -42,24 +29,12 @@ export default function RequestScreen() {
 
     // Add this function to filter tasks by selected date
     const getFilteredTasks = () => {
-        console.log('Filtering tasks in RequestScreen:', cleaningTasks.length);
         // Filter pending tasks only
         return cleaningTasks.filter(task => {
             // Make sure we only show PENDING status tasks
             if (task.status !== STATUS.PENDING) {
                 console.log('Task filtered out because it is not PENDING:', task.status);
                 return false;
-            }
-
-            // If task has checkOutDate, use it for date filtering
-            if (task.checkOutDate) {
-                const taskDate = new Date(task.checkOutDate);
-                taskDate.setHours(0, 0, 0, 0); // Normalize task date to start of day
-
-                const compareDate = new Date(selectedDate);
-                compareDate.setHours(0, 0, 0, 0); // Normalize selected date
-
-                return taskDate.toDateString() === compareDate.toDateString();
             }
 
             // If we reach here, the task has PENDING status but no checkOut date
@@ -77,179 +52,11 @@ export default function RequestScreen() {
         return;
     }, []);
 
-    // Split into two separate effects to prevent refresh loops
-    // Effect for date changes to update calendar visuals
-    useEffect(() => {
-        console.log('Selected date changed, updating calendar UI');
-        generateCalendarDays(selectedDate);
-    }, [selectedDate]);
-
     // Effect for data fetching - only triggered by explicit actions
     useEffect(() => {
         // Initial data load only
-        console.log('Initial data load');
-        const dateToFetch = new Date(selectedDate);
-        dateToFetch.setHours(0, 0, 0, 0);
-        fetchCleaningTasks(dateToFetch, STATUS.PENDING);
-        generateMonths(selectedMonth);
+        fetchCleaningTasks(null, STATUS.PENDING);
     }, []); // Empty dependency array - only run once on mount
-
-    // Generate months for 3-month calendar
-    const generateMonths = (centerDate = new Date()) => {
-        const months = [];
-        // Base year from selected date
-        const baseYear = selectedMonth.getFullYear();
-
-        // Generate all 12 months of the year
-        for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
-            const monthDate = new Date(baseYear, monthIndex, 1);
-            const year = monthDate.getFullYear();
-            const month = monthDate.getMonth();
-
-            // Get days in month
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-            // Get weekday of first day (0 = Sunday, 1 = Monday, etc.)
-            const firstDayOfMonth = new Date(year, month, 1).getDay();
-
-            // Build days for this month
-            const days = [];
-
-            // Add empty days for proper alignment (empty days before month starts)
-            for (let j = 0; j < firstDayOfMonth; j++) {
-                days.push({
-                    empty: true,
-                    day: ''
-                });
-            }
-
-            // Add actual days
-            for (let day = 1; day <= daysInMonth; day++) {
-                const date = new Date(year, month, day);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const isToday = date.toDateString() === today.toDateString();
-
-                // Check if there are tasks for this day
-                const hasTask = cleaningTasks.some(task => {
-                    if (task.status !== STATUS.PENDING) return false;
-                    if (!task.reservationDetails?.checkOut) return false;
-
-                    const taskDate = new Date(task.reservationDetails.checkOut);
-                    taskDate.setHours(0, 0, 0, 0);
-                    return taskDate.toDateString() === date.toDateString();
-                });
-
-                days.push({
-                    day,
-                    fullDate: date,
-                    isToday,
-                    hasTask
-                });
-            }
-
-            months.push({
-                year,
-                month,
-                monthName: monthDate.toLocaleString('en-US', { month: 'long' }),
-                days
-            });
-        }
-
-        setMonths(months);
-    };
-
-    const generateCalendarDays = (centerDate = new Date()) => {
-        const baseDateForCalendar = new Date(centerDate);
-        baseDateForCalendar.setHours(0, 0, 0, 0); // Normalize date to start of day
-
-        const days = [];
-        const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-        console.log('Generating calendar days with tasks count:', cleaningTasks.length);
-
-        for (let i = -3; i <= 3; i++) {
-            const date = new Date(baseDateForCalendar);
-            date.setDate(baseDateForCalendar.getDate() + i);
-            date.setHours(0, 0, 0, 0); // Ensure all dates are at midnight
-
-            // Check if this date is today
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const isToday = date.getTime() === today.getTime();
-
-            // Check for tasks on this day
-            const tasksForThisDay = cleaningTasks.filter(task => {
-                // Only consider PENDING tasks
-                if (task.status !== STATUS.PENDING) return false;
-
-                // If task has checkOutDate, use it for date comparison
-                if (task.checkOutDate) {
-                    const taskDate = new Date(task.checkOutDate);
-                    taskDate.setHours(0, 0, 0, 0); // Normalize task date
-                    return taskDate.toDateString() === date.toDateString();
-                }
-
-                // For tasks without checkOut date, consider them for today only
-                return isToday;
-            });
-
-            const hasTask = tasksForThisDay.length > 0;
-
-            if (hasTask) {
-                console.log(`Date ${date.toDateString()} has ${tasksForThisDay.length} tasks`);
-            }
-
-            days.push({
-                date: date.getDate(),
-                fullDate: date,
-                day: daysOfWeek[date.getDay()],
-                hasTask,
-                isToday
-            });
-        }
-        setCalendarDays(days);
-    };
-
-    const handleDateSelect = (fullDate) => {
-        // Create a new date object with time set to midnight to ensure consistency
-        const newSelectedDate = new Date(fullDate);
-        newSelectedDate.setHours(0, 0, 0, 0);
-
-        // Log date in a readable format
-        console.log('Selected date:',
-            `${newSelectedDate.getFullYear()}-${String(newSelectedDate.getMonth() + 1).padStart(2, '0')}-${String(newSelectedDate.getDate()).padStart(2, '0')}`
-        );
-
-        // Check if this is a different date than currently selected
-        if (newSelectedDate.toDateString() !== selectedDate.toDateString()) {
-            setSelectedDate(newSelectedDate);
-
-            // Manually fetch data for the new date
-            console.log('Selected new date, fetching with status:', STATUS.PENDING);
-            fetchCleaningTasks(newSelectedDate, STATUS.PENDING);
-        }
-
-        // Update the selected month if the date is in a different month
-        if (newSelectedDate.getMonth() !== selectedMonth.getMonth() ||
-            newSelectedDate.getFullYear() !== selectedMonth.getFullYear()) {
-            setSelectedMonth(newSelectedDate);
-        }
-    };
-
-    const handlePrevMonth = () => {
-        const prevMonth = new Date(selectedMonth);
-        prevMonth.setMonth(prevMonth.getMonth() - 1);
-        setSelectedMonth(prevMonth);
-        generateMonths(prevMonth);
-    };
-
-    const handleNextMonth = () => {
-        const nextMonth = new Date(selectedMonth);
-        nextMonth.setMonth(nextMonth.getMonth() + 1);
-        setSelectedMonth(nextMonth);
-        generateMonths(nextMonth);
-    };
 
     const handleRefresh = () => {
         console.log('Manual refresh triggered for request screen');
@@ -263,41 +70,6 @@ export default function RequestScreen() {
             task: task,
             refreshOnReturn: true
         });
-    };
-
-    // Handle prev year
-    const handlePrevYear = () => {
-        const prevYear = new Date(selectedMonth);
-        prevYear.setFullYear(prevYear.getFullYear() - 1);
-        setSelectedMonth(prevYear);
-        generateMonths(prevYear);
-    };
-
-    // Handle next year
-    const handleNextYear = () => {
-        const nextYear = new Date(selectedMonth);
-        nextYear.setFullYear(nextYear.getFullYear() + 1);
-        setSelectedMonth(nextYear);
-        generateMonths(nextYear);
-    };
-
-    // Handle month selection
-    const handleMonthSelect = (monthIndex) => {
-        const newDate = new Date(selectedMonth);
-        newDate.setMonth(monthIndex);
-        newDate.setDate(1);
-        setSelectedMonth(newDate);
-
-        // If there's no selected date in this month, set it to the 1st
-        const currentSelectedMonth = selectedDate.getMonth();
-        const currentSelectedYear = selectedDate.getFullYear();
-        if (currentSelectedMonth !== monthIndex || currentSelectedYear !== newDate.getFullYear()) {
-            setSelectedDate(newDate);
-        }
-    };
-
-    const toggleCalendarExpanded = () => {
-        setCalendarExpanded(!calendarExpanded);
     };
 
     const showToast = (message) => {
@@ -335,129 +107,6 @@ export default function RequestScreen() {
             setIsSubmitting(false);
         }
     };
-
-    // Render 1-year calendar
-    const renderMonthCalendar = () => {
-        const currentMonth = months.find(m => m.month === selectedMonth.getMonth());
-
-        if (!currentMonth) return null;
-
-        return (
-            <View style={styles.monthCalendarWrapper}>
-                <Text style={styles.currentMonthTitle}>
-                    {currentMonth.monthName} {selectedMonth.getFullYear()}
-                </Text>
-
-                <View style={styles.daysOfWeekRow}>
-                    <Text style={styles.dayOfWeek}>S</Text>
-                    <Text style={styles.dayOfWeek}>M</Text>
-                    <Text style={styles.dayOfWeek}>T</Text>
-                    <Text style={styles.dayOfWeek}>W</Text>
-                    <Text style={styles.dayOfWeek}>T</Text>
-                    <Text style={styles.dayOfWeek}>F</Text>
-                    <Text style={styles.dayOfWeek}>S</Text>
-                </View>
-
-                <View style={styles.monthDaysGrid}>
-                    {currentMonth.days.map((day, index) => (
-                        <TouchableOpacity
-                            key={index}
-                            style={[
-                                styles.calendarDay,
-                                day.empty && styles.emptyDay,
-                                day.isToday && styles.calendarToday,
-                                day.fullDate &&
-                                selectedDate.toDateString() === day.fullDate.toDateString() &&
-                                styles.calendarDaySelected
-                            ]}
-                            onPress={() => day.fullDate && handleDateSelect(day.fullDate)}
-                            disabled={day.empty}
-                        >
-                            <Text style={[
-                                styles.calendarDayText,
-                                day.isToday && styles.todayText,
-                                day.fullDate &&
-                                selectedDate.toDateString() === day.fullDate.toDateString() &&
-                                styles.calendarDayTextSelected
-                            ]}>
-                                {day.day}
-                            </Text>
-                            {day.hasTask && <View style={[
-                                styles.taskDot,
-                                day.fullDate && selectedDate.toDateString() === day.fullDate.toDateString() ?
-                                    { backgroundColor: 'white' } : { backgroundColor: '#00BFA6' }
-                            ]} />}
-                        </TouchableOpacity>
-                    ))}
-                </View>
-
-                <View style={styles.monthSelector}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.monthsScrollView}>
-                        {months.map((month, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={[
-                                    styles.monthButton,
-                                    month.month === selectedMonth.getMonth() && styles.selectedMonthButton
-                                ]}
-                                onPress={() => handleMonthSelect(month.month)}
-                            >
-                                <Text style={[
-                                    styles.monthButtonText,
-                                    month.month === selectedMonth.getMonth() && styles.selectedMonthButtonText
-                                ]}>
-                                    {month.monthName}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-            </View>
-        );
-    };
-
-    // Calendar render for week view
-    const renderWeekCalendar = () => (
-        <View style={styles.weekCalendar}>
-            {calendarDays.map((day, index) => (
-                <TouchableOpacity
-                    key={index}
-                    style={[
-                        styles.dayItem,
-                        day.isToday && styles.dayItemToday,
-                        day.fullDate.toDateString() === selectedDate.toDateString() && styles.dayItemSelected
-                    ]}
-                    onPress={() => handleDateSelect(day.fullDate)}
-                >
-                    <Text
-                        style={[
-                            styles.weekdayText,
-                            day.isToday && styles.todayText,
-                            day.fullDate.toDateString() === selectedDate.toDateString() && styles.weekdayTextSelected
-                        ]}
-                    >
-                        {day.day}
-                    </Text>
-                    <Text
-                        style={[
-                            styles.dayText,
-                            day.isToday && styles.todayText,
-                            day.fullDate.toDateString() === selectedDate.toDateString() && styles.dayTextSelected
-                        ]}
-                    >
-                        {day.date}
-                    </Text>
-                    {day.hasTask && (
-                        <View style={[
-                            styles.taskDot,
-                            day.fullDate.toDateString() === selectedDate.toDateString() ?
-                                { backgroundColor: 'white' } : { backgroundColor: '#00BFA6' }
-                        ]} />
-                    )}
-                </TouchableOpacity>
-            ))}
-        </View>
-    );
 
     // Render footer for FlatList (không cần nữa vì đã loại bỏ tính năng tự động chuyển ngày)
     const renderFooter = () => {
@@ -649,7 +298,6 @@ export default function RequestScreen() {
         if (error.includes('permission')) {
             return (
                 <View style={styles.container}>
-                    {renderMonthCalendar()}
                     <View style={styles.errorContainer}>
                         <Ionicons name="lock-closed" size={48} color="#FF3B30" />
                         <Text style={styles.errorTitle}>Access Restricted</Text>
@@ -670,7 +318,6 @@ export default function RequestScreen() {
         // For other errors
         return (
             <View style={styles.container}>
-                {renderMonthCalendar()}
                 <View style={styles.errorContainer}>
                     <Ionicons name="alert-circle" size={48} color="#FF3B30" />
                     <Text style={styles.errorTitle}>Something went wrong</Text>
@@ -699,39 +346,6 @@ export default function RequestScreen() {
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Cleaning Requests</Text>
             </View>
-
-            <View style={styles.weekCalendarContainer}>
-                {renderWeekCalendar()}
-            </View>
-
-            <TouchableOpacity
-                style={styles.calendarToggle}
-                onPress={toggleCalendarExpanded}
-            >
-                <Text style={styles.monthYearText}>
-                    {calendarExpanded ? "Hide Calendar" : "Show Calendar"}
-                </Text>
-                <Ionicons
-                    name={calendarExpanded ? "chevron-up" : "chevron-down"}
-                    size={20}
-                    color="#00BFA6"
-                />
-            </TouchableOpacity>
-
-            {calendarExpanded && (
-                <View style={styles.compactCalendarContainer}>
-                    <View style={styles.yearNavigator}>
-                        <TouchableOpacity onPress={handlePrevYear} style={styles.yearButton}>
-                            <Ionicons name="chevron-back" size={24} color="#00BFA6" />
-                        </TouchableOpacity>
-                        <Text style={styles.yearText}>{selectedMonth.getFullYear()}</Text>
-                        <TouchableOpacity onPress={handleNextYear} style={styles.yearButton}>
-                            <Ionicons name="chevron-forward" size={24} color="#00BFA6" />
-                        </TouchableOpacity>
-                    </View>
-                    {renderMonthCalendar()}
-                </View>
-            )}
 
             {loading && filteredTasks.length === 0 ? (
                 <View style={styles.centeredContent}>
@@ -791,7 +405,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingTop: 16,
-        paddingBottom: 8,
+        paddingBottom: 12,
         backgroundColor: '#ffffff',
         marginTop: 50,
     },

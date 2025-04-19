@@ -32,7 +32,7 @@ export const useReservation = () => {
 
             // Build request body
             const requestBody = {
-                date: formattedDate,
+                date: date ? formattedDate : null,
             };
 
             // Add status filter if provided
