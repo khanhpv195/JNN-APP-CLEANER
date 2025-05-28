@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NavigationService from '@/navigation/NavigationService';
 import { useTheme } from '@/shared/theme';
 import { ThemedText, ThemedButton } from '@/components';
-import Logo from '../../assets/images/Logo.png';
+import Logo from '../../assets/logo.png';
 
 /**
  * LoginScreen Component

@@ -36,7 +36,7 @@ const InventoryListScreen = () => {
             backgroundColor: theme.background,
         },
         header: {
-            backgroundColor: Colors.primary,
+            backgroundColor: Colors.teal,
             padding: 16,
             flexDirection: 'row',
             alignItems: 'center',
