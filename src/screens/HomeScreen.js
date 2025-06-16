@@ -182,20 +182,19 @@ export default function HomeScreen() {
             today.setHours(0, 0, 0, 0);
             const isToday = date.getTime() === today.getTime();
 
-            // Check for tasks on this day
+            // Check for ALL tasks on this day, not just PENDING
             const tasksForThisDay = cleaningTasks.filter(task => {
-                // Only consider PENDING tasks
-                if (task.status !== STATUS.PENDING) return false;
-
-                // If task has checkOut date, use it for date comparison
-                if (task.reservationDetails?.checkOut) {
+                // Check both checkOutDate and reservationDetails.checkOut
+                if (task.checkOutDate) {
+                    const taskDate = new Date(task.checkOutDate);
+                    taskDate.setHours(0, 0, 0, 0); // Normalize task date
+                    return taskDate.toDateString() === date.toDateString();
+                } else if (task.reservationDetails?.checkOut) {
                     const taskDate = new Date(task.reservationDetails.checkOut);
                     taskDate.setHours(0, 0, 0, 0); // Normalize task date
                     return taskDate.toDateString() === date.toDateString();
                 }
-
-                // For tasks without checkOut date, consider them for today only
-                return isToday;
+                return false;
             });
 
             const hasTask = tasksForThisDay.length > 0;
@@ -209,7 +208,8 @@ export default function HomeScreen() {
                 fullDate: date,
                 day: daysOfWeek[date.getDay()],
                 hasTask,
-                isToday
+                isToday,
+                tasksCount: tasksForThisDay.length
             });
         }
         setCalendarDays(days);
@@ -373,8 +373,18 @@ export default function HomeScreen() {
                         <View style={[
                             styles.taskDot,
                             day.fullDate.toDateString() === selectedDate.toDateString() ?
-                                { backgroundColor: 'white' } : { backgroundColor: '#00BFA6' }
-                        ]} />
+                                { backgroundColor: 'white' } : { backgroundColor: '#FF5252' }
+                        ]}>
+                            {day.tasksCount > 1 && (
+                                <Text style={[
+                                    styles.taskCount,
+                                    day.fullDate.toDateString() === selectedDate.toDateString() ?
+                                        { color: '#00BFA6' } : { color: 'white' }
+                                ]}>
+                                    {day.tasksCount}
+                                </Text>
+                            )}
+                        </View>
                     )}
                 </TouchableOpacity>
             ))}
@@ -435,8 +445,18 @@ export default function HomeScreen() {
                             {day.hasTask && <View style={[
                                 styles.taskDot,
                                 day.fullDate && selectedDate.toDateString() === day.fullDate.toDateString() ?
-                                    { backgroundColor: 'white' } : { backgroundColor: '#00BFA6' }
-                            ]} />}
+                                    { backgroundColor: 'white' } : { backgroundColor: '#FF5252' }
+                            ]}>
+                                {day.tasksCount > 1 && (
+                                    <Text style={[
+                                        styles.taskCount,
+                                        day.fullDate && selectedDate.toDateString() === day.fullDate.toDateString() ?
+                                            { color: '#00BFA6' } : { color: 'white' }
+                                    ]}>
+                                        {day.tasksCount}
+                                    </Text>
+                                )}
+                            </View>}
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -1127,11 +1147,20 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     taskDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#00BFA6',
+        minWidth: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#FF5252',
         marginTop: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 2,
+    },
+    taskCount: {
+        fontSize: 8,
+        fontWeight: 'bold',
+        color: 'white',
+        textAlign: 'center',
     },
     acceptButton: {
         backgroundColor: '#00BFA5',
