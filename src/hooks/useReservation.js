@@ -15,6 +15,8 @@ export const useReservation = () => {
     const [error, setError] = useState(null);
     const [cleaningTasks, setCleaningTasks] = useState([]);
     const [refreshKey, setRefreshKey] = useState(0);
+    // Task cache to store tasks by date to prevent data loss when switching dates
+    const [taskCache, setTaskCache] = useState(new Map());
 
     /**
      * Fetch all cleaning tasks for a specific date
@@ -95,14 +97,30 @@ export const useReservation = () => {
             const localDate = new Date(date);
             const formattedDate = format(localDate, 'yyyy-MM-dd');
 
+            // Check cache first
+            const cacheKey = formattedDate;
+            if (taskCache.has(cacheKey)) {
+                console.log(`Using cached tasks for date: ${formattedDate}`);
+                const cachedTasks = taskCache.get(cacheKey);
+                setCleaningTasks(cachedTasks);
+                setLoading(false);
+                return cachedTasks;
+            }
+
+            console.log(`Fetching tasks from API for date: ${formattedDate}`);
             const response = await POST('/listAcceptedCleaningTasks', {
                 body: {
                     date: formattedDate
                 }
             });
 
-
             if (response && response.data) {
+                // Update cache with new data
+                setTaskCache(prevCache => {
+                    const newCache = new Map(prevCache);
+                    newCache.set(cacheKey, response.data);
+                    return newCache;
+                });
 
                 setCleaningTasks(response.data);
                 return response.data;
@@ -114,7 +132,7 @@ export const useReservation = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [taskCache]);
 
     /**
      * Get details of a specific cleaning task
@@ -194,6 +212,20 @@ export const useReservation = () => {
 
     const clearError = () => setError(null);
 
+    // Get all cached tasks for calendar generation
+    const getAllCachedTasks = useCallback(() => {
+        const allTasks = [];
+        for (const tasks of taskCache.values()) {
+            allTasks.push(...tasks);
+        }
+        return allTasks;
+    }, [taskCache]);
+
+    // Clear task cache (useful for refresh)
+    const clearTaskCache = useCallback(() => {
+        setTaskCache(new Map());
+    }, []);
+
     const uploadImage = async (formData) => {
         try {
             const response = await TaskApis.uploadImage(formData);
@@ -218,6 +250,9 @@ export const useReservation = () => {
         updateProperty,
         refreshKey,
         setRefreshKey,
-        setFetching
+        setFetching,
+        getAllCachedTasks,
+        clearTaskCache,
+        taskCache
     };
 }; 
