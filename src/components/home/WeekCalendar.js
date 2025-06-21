@@ -32,21 +32,13 @@ const WeekCalendar = ({ calendarDays, selectedDate, onDateSelect }) => {
                     >
                         {day.date}
                     </Text>
+                    
+                    {/* Display red dot for days with tasks */}
                     {day.hasTask && (
-                        <View style={[
-                            styles.taskDot,
-                            day.fullDate.toDateString() === selectedDate.toDateString() ?
-                                { backgroundColor: 'white' } : { backgroundColor: '#FF5252' }
-                        ]}>
-                            {day.tasksCount > 1 && (
-                                <Text style={[
-                                    styles.taskCount,
-                                    day.fullDate.toDateString() === selectedDate.toDateString() ?
-                                        { color: '#00BFA6' } : { color: 'white' }
-                                ]}>
-                                    {day.tasksCount}
-                                </Text>
-                            )}
+                        <View style={styles.taskDot}>
+                            {day.tasksCount > 1 ? (
+                                <Text style={styles.taskCount}>{day.tasksCount}</Text>
+                            ) : null}
                         </View>
                     )}
                 </TouchableOpacity>

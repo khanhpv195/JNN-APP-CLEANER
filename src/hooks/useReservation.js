@@ -102,7 +102,23 @@ export const useReservation = () => {
             if (taskCache.has(cacheKey)) {
                 console.log(`Using cached tasks for date: ${formattedDate}`);
                 const cachedTasks = taskCache.get(cacheKey);
-                setCleaningTasks(cachedTasks);
+                
+                // Important: Always update the cleaningTasks state with cached data
+                // This ensures the UI always shows the tasks even when toggling views
+                setCleaningTasks(prevTasks => {
+                    // Merge with existing tasks to ensure we don't lose any
+                    const taskIds = new Set(prevTasks.map(task => task._id));
+                    const newTasks = [...prevTasks];
+                    
+                    for (const task of cachedTasks) {
+                        if (!taskIds.has(task._id)) {
+                            newTasks.push(task);
+                        }
+                    }
+                    
+                    return newTasks;
+                });
+                
                 setLoading(false);
                 return cachedTasks;
             }
@@ -122,7 +138,21 @@ export const useReservation = () => {
                     return newCache;
                 });
 
-                setCleaningTasks(response.data);
+                // Update cleaningTasks state, preserving existing tasks
+                setCleaningTasks(prevTasks => {
+                    // Merge with existing tasks to ensure we don't lose any
+                    const taskIds = new Set(prevTasks.map(task => task._id));
+                    const newTasks = [...prevTasks];
+                    
+                    for (const task of response.data) {
+                        if (!taskIds.has(task._id)) {
+                            newTasks.push(task);
+                        }
+                    }
+                    
+                    return newTasks;
+                });
+                
                 return response.data;
             }
             return response;

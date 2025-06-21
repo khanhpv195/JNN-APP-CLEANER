@@ -1,9 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { STATUS } from '../../constants/status';
 
-const TaskList = ({ tasks, onTaskPress, onRefresh, loading }) => {
+const TaskList = ({ 
+    tasks, 
+    onTaskPress, 
+    onRefresh, 
+    loading, 
+    onEndReached,
+    onEndReachedThreshold,
+    ListFooterComponent 
+}) => {
+    // Add state to prevent multiple onEndReached calls
+    const [onEndReachedCalledDuringMomentum, setOnEndReachedCalledDuringMomentum] = useState(false);
+
     const getStatusColor = (status) => {
         switch (status) {
             case STATUS.PENDING:
@@ -154,6 +165,14 @@ const TaskList = ({ tasks, onTaskPress, onRefresh, loading }) => {
         );
     };
 
+    // Handle end reached with debounce
+    const handleEndReached = () => {
+        if (!onEndReachedCalledDuringMomentum && onEndReached) {
+            onEndReached();
+            setOnEndReachedCalledDuringMomentum(true);
+        }
+    };
+
     return (
         <FlatList
             data={tasks}
@@ -162,6 +181,10 @@ const TaskList = ({ tasks, onTaskPress, onRefresh, loading }) => {
             contentContainerStyle={styles.taskList}
             refreshing={loading}
             onRefresh={onRefresh}
+            onEndReached={handleEndReached}
+            onEndReachedThreshold={onEndReachedThreshold || 0.5}
+            onMomentumScrollBegin={() => setOnEndReachedCalledDuringMomentum(false)}
+            ListFooterComponent={ListFooterComponent}
         />
     );
 };

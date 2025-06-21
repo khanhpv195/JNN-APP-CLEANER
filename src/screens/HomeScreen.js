@@ -2,11 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useReservation } from '../hooks/useReservation';
 import { STATUS } from '../constants/status';
 import WeekCalendar from '../components/home/WeekCalendar';
 import MonthCalendar from '../components/home/MonthCalendar';
 import TaskList from '../components/home/TaskList';
+import { format } from 'date-fns';
+
+const SELECTED_DATE_KEY = '@cleaner_app/selected_date';
 
 export default function HomeScreen() {
     const navigation = useNavigation();
@@ -15,7 +19,37 @@ export default function HomeScreen() {
     const [calendarDays, setCalendarDays] = useState([]);
     const [months, setMonths] = useState([]);
     const [calendarExpanded, setCalendarExpanded] = useState(false);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const { cleaningTasks, loading, error, updateTask, fetchCleaningTasksNotPending, setFetching, getAllCachedTasks, clearTaskCache, taskCache } = useReservation();
+
+    // Load persisted date on mount
+    useEffect(() => {
+        const loadPersistedDate = async () => {
+            try {
+                const savedDateStr = await AsyncStorage.getItem(SELECTED_DATE_KEY);
+                if (savedDateStr) {
+                    const savedDate = new Date(savedDateStr);
+                    setSelectedDate(savedDate);
+                    setSelectedMonth(savedDate);
+                }
+            } catch (error) {
+                console.error('Error loading persisted date:', error);
+            }
+        };
+        loadPersistedDate();
+    }, []);
+
+    // Save selected date whenever it changes
+    useEffect(() => {
+        const persistDate = async () => {
+            try {
+                await AsyncStorage.setItem(SELECTED_DATE_KEY, selectedDate.toISOString());
+            } catch (error) {
+                console.error('Error persisting selected date:', error);
+            }
+        };
+        persistDate();
+    }, [selectedDate]);
 
     console.log('cleaningTasks in HomeScreen:', cleaningTasks);
 
@@ -64,11 +98,16 @@ export default function HomeScreen() {
                 const compareDate = new Date(selectedDate);
                 compareDate.setHours(0, 0, 0, 0);
 
+                // Show tasks from the selected date
                 const matched = taskDate.toDateString() === compareDate.toDateString();
-                if (!matched) {
-                    console.log(`Task ${task._id} does not match date. Task date: ${taskDate.toDateString()}, Selected date: ${compareDate.toDateString()}`);
+                
+                if (matched) {
+                    return true;
+                } else {
+                    // For debugging only, don't log every mismatch to avoid console spam
+                    // console.log(`Task ${task._id} does not match date. Task date: ${taskDate.toDateString()}, Selected date: ${compareDate.toDateString()}`);
+                    return false;
                 }
-                return matched;
             }
 
             // Default: show tasks without date
@@ -78,12 +117,49 @@ export default function HomeScreen() {
 
     // Handle load more when reaching end of list
     const handleLoadMore = useCallback(async () => {
-        // Không làm gì khi kéo đến cuối danh sách
-        // Đã loại bỏ tính năng tự động chuyển sang ngày tiếp theo
-        console.log('Reached end of list, disabled auto-load next day feature');
-        return;
-    }, []);
+        if (isLoadingMore) return;
+        
+        // Get filtered tasks for current date
+        const currentDateTasks = getFilteredTasks();
+        
+        // Don't load more if we already have tasks for the current date
+        // or if we're currently loading
+        if (currentDateTasks.length === 0 || loading) {
+            console.log('No need to load more: already loading or no tasks for current date');
+            return;
+        }
 
+        try {
+            setIsLoadingMore(true);
+
+            // Get next date
+            const nextDate = new Date(selectedDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            nextDate.setHours(0, 0, 0, 0);
+
+            // Check if we already have tasks for the next date in cache
+            const nextDateStr = format(nextDate, 'yyyy-MM-dd');
+            const hasNextDateTasks = taskCache.has(nextDateStr) && taskCache.get(nextDateStr).length > 0;
+            
+            if (hasNextDateTasks) {
+                console.log('Already have tasks for next date in cache, no need to fetch');
+                setIsLoadingMore(false);
+                return;
+            }
+
+            // Fetch tasks for next date without changing the selected date
+            await fetchCleaningTasksNotPending(nextDate);
+            
+            // Update calendar UI to show tasks for the next day
+            // but don't change the selected date
+            generateCalendarDays(selectedDate);
+            
+        } catch (error) {
+            console.error('Error loading more tasks:', error);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    }, [selectedDate, isLoadingMore, loading, fetchCleaningTasksNotPending, taskCache, getFilteredTasks]);
 
 
     // Effect for data fetching - only triggered by explicit actions
@@ -92,8 +168,27 @@ export default function HomeScreen() {
         console.log('Initial data load');
         const dateToFetch = new Date(selectedDate);
         dateToFetch.setHours(0, 0, 0, 0);
-        fetchCleaningTasksNotPending(dateToFetch);
-        generateMonths(selectedMonth);
+        
+        // Load tasks for multiple dates to show red dots on initial load
+        const loadInitialTasks = async () => {
+            // Fetch tasks for selected date
+            await fetchCleaningTasksNotPending(dateToFetch);
+            
+            // Fetch tasks for a few days before and after to populate calendar dots
+            for (let i = -3; i <= 3; i++) {
+                if (i === 0) continue; // Skip selected date, already fetched
+                
+                const additionalDate = new Date(dateToFetch);
+                additionalDate.setDate(dateToFetch.getDate() + i);
+                await fetchCleaningTasksNotPending(additionalDate);
+            }
+            
+            // Generate calendars after all data is loaded
+            generateCalendarDays(selectedDate);
+            generateMonths(selectedMonth);
+        };
+        
+        loadInitialTasks();
     }, []); // Empty dependency array - only run once on mount
 
     // Effect for date changes to update calendar visuals
@@ -259,12 +354,9 @@ export default function HomeScreen() {
             `${newSelectedDate.getFullYear()}-${String(newSelectedDate.getMonth() + 1).padStart(2, '0')}-${String(newSelectedDate.getDate()).padStart(2, '0')}`
         );
 
-        // Check if this is a different date than currently selected
-        if (newSelectedDate.toDateString() !== selectedDate.toDateString()) {
-            setSelectedDate(newSelectedDate);
-
-            fetchCleaningTasksNotPending(newSelectedDate);
-        }
+        // Always update the selected date and fetch tasks, regardless of whether it's the same date
+        setSelectedDate(newSelectedDate);
+        fetchCleaningTasksNotPending(newSelectedDate);
 
         // Update the selected month if the date is in a different month
         if (newSelectedDate.getMonth() !== selectedMonth.getMonth() ||
@@ -334,6 +426,12 @@ export default function HomeScreen() {
 
     const toggleCalendarExpanded = () => {
         setCalendarExpanded(!calendarExpanded);
+        
+        // Make sure we refresh the data when toggling the calendar
+        // to ensure tasks are still visible
+        const dateToFetch = new Date(selectedDate);
+        dateToFetch.setHours(0, 0, 0, 0);
+        fetchCleaningTasksNotPending(dateToFetch);
     };
 
 
@@ -470,6 +568,14 @@ export default function HomeScreen() {
                     onTaskPress={handleTaskPress}
                     onRefresh={handleRefresh}
                     loading={loading}
+                    onEndReached={handleLoadMore}
+                    onEndReachedThreshold={0.5}
+                    ListFooterComponent={isLoadingMore ? (
+                        <View style={styles.loadingMore}>
+                            <ActivityIndicator size="small" color="#00BFA6" />
+                            <Text style={styles.loadingMoreText}>Loading more tasks...</Text>
+                        </View>
+                    ) : null}
                 />
             )}
         </View>
@@ -629,6 +735,15 @@ const styles = StyleSheet.create({
     },
     helperText: {
         marginTop: 10,
+        fontSize: 14,
+        color: '#666',
+    },
+    loadingMore: {
+        paddingVertical: 16,
+        alignItems: 'center',
+    },
+    loadingMoreText: {
+        marginTop: 8,
         fontSize: 14,
         color: '#666',
     },

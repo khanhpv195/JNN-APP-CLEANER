@@ -52,21 +52,13 @@ const MonthCalendar = ({
                         ]}>
                             {day.day}
                         </Text>
-                        {day.hasTask && (
-                            <View style={[
-                                styles.taskDot,
-                                day.fullDate && selectedDate.toDateString() === day.fullDate.toDateString() ?
-                                    { backgroundColor: 'white' } : { backgroundColor: '#FF5252' }
-                            ]}>
-                                {day.tasksCount > 1 && (
-                                    <Text style={[
-                                        styles.taskCount,
-                                        day.fullDate && selectedDate.toDateString() === day.fullDate.toDateString() ?
-                                            { color: '#00BFA6' } : { color: 'white' }
-                                    ]}>
-                                        {day.tasksCount}
-                                    </Text>
-                                )}
+                        
+                        {/* Display red dot for days with tasks */}
+                        {!day.empty && day.hasTask && (
+                            <View style={styles.taskDot}>
+                                {day.tasksCount > 1 ? (
+                                    <Text style={styles.taskCount}>{day.tasksCount}</Text>
+                                ) : null}
                             </View>
                         )}
                     </TouchableOpacity>
@@ -188,19 +180,18 @@ const styles = StyleSheet.create({
     monthButton: {
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 20,
         marginHorizontal: 4,
-        backgroundColor: '#f2f2f2',
+        borderRadius: 16,
     },
     selectedMonthButton: {
-        backgroundColor: '#00BFA6',
+        backgroundColor: '#e6f7f5',
     },
     monthButtonText: {
         fontSize: 14,
-        color: '#666',
+        color: '#333',
     },
     selectedMonthButtonText: {
-        color: '#ffffff',
+        color: '#00BFA6',
         fontWeight: 'bold',
     },
 });
