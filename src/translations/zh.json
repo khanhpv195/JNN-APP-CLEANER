@@ -1,0 +1,90 @@
+{
+  "settings": {
+    "title": "设置",
+    "language": "语言",
+    "theme": "主题",
+    "pricing": "价格",
+    "darkMode": "深色模式",
+    "notifications": "通知",
+    "about": "关于",
+    "themeSettings": "主题设置",
+    "languageSettings": "语言设置",
+    "pricingSettings": "服务价格",
+    "comingSoon": "即将推出"
+  },
+  "navigation": {
+    "home": "首页",
+    "dashboard": "仪表板",
+    "properties": "房产",
+    "customers": "客户",
+    "calendar": "日历",
+    "profile": "个人资料",
+    "notification": "通知",
+    "details": "详情",
+    "message": "消息",
+    "search": "搜索"
+  },
+  "languages": {
+    "english": "英语",
+    "vietnamese": "越南语",
+    "spanish": "西班牙语",
+    "chinese": "中文",
+    "japanese": "日语"
+  },
+  "pricing": {
+    "cleanerPrice": "清洁价格（每小时$）",
+    "maintenancePrice": "维护价格（每小时$）",
+    "savePricing": "保存价格"
+  },
+  "theme": {
+    "primaryColor": "主要颜色（按钮，标题）",
+    "secondaryColor": "次要颜色",
+    "accentColor": "强调颜色（高亮，链接）",
+    "backgroundColor": "背景颜色",
+    "cardColor": "卡片颜色",
+    "textColor": "文本颜色",
+    "previewComponents": "预览主题组件",
+    "saveTheme": "保存主题",
+    "resetTheme": "重置为默认主题"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "ok": "确定",
+    "back": "返回"
+  },
+  "taskDetail": {
+    "cleaningTask": "清洁任务",
+    "maintenanceTask": "维护任务",
+    "date": "日期",
+    "checkIn": "入住",
+    "checkOut": "退房",
+    "price": "价格",
+    "payment": "支付",
+    "taskDetails": "任务详情",
+    "checklist": "检查清单",
+    "images": "图片",
+    "issues": "问题",
+    "noImages": "没有可用图片",
+    "loadingTask": "正在加载任务信息...",
+    "errorLoading": "加载任务时出错。请重试。",
+    "notFound": "未找到任务信息或发生错误。",
+    "paymentHistory": "支付历史",
+    "paymentDate": "支付日期",
+    "paymentStatus": "状态",
+    "paymentAmount": "金额",
+    "noPaymentHistory": "没有可用的支付历史",
+    "assignedTo": "分配给",
+    "name": "姓名",
+    "role": "角色",
+    "phone": "电话",
+    "email": "电子邮件",
+    "unknown": "未知",
+    "description": "描述"
+  },
+  "actions": {
+    "refresh": "刷新",
+    "accept": "接受",
+    "reject": "拒绝"
+  }
+}
