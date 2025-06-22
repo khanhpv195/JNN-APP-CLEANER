@@ -1,5 +1,5 @@
-import { createSlice } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createSlice } from '@reduxjs/toolkit';
 import authenticationApis from './../../shared/api/authenticationApis';
 
 const initialState = {
@@ -42,7 +42,7 @@ export const authSlice = createSlice({
             state.isLoggedIn = false;
             state.user = null;
             state.accessToken = null;
-            // Only clear AsyncStorage here, let the fetch.js handle navigation
+            // Only clear AsyncStorage here, let the sessionService handle navigation
             AsyncStorage.multiRemove(['accessToken', 'user']);
         },
     },
