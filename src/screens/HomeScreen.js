@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MonthCalendar from '../components/home/MonthCalendar';
@@ -18,8 +18,10 @@ export default function HomeScreen() {
     const [calendarDays, setCalendarDays] = useState([]);
     const [months, setMonths] = useState([]);
     const [calendarExpanded, setCalendarExpanded] = useState(false);
-    const [tasksForSelectedDate, setTasksForSelectedDate] = useState([]);
+    const [allTasks, setAllTasks] = useState([]);
     const [dataLoaded, setDataLoaded] = useState(false);
+    const scrollViewRef = useRef(null);
+    const currentVisibleDateRef = useRef(new Date());
     
     const { 
         cleaningTasks, 
@@ -29,7 +31,8 @@ export default function HomeScreen() {
         fetchAllCleaningTasks,
         clearTaskCache,
         fetching,
-        getTasksForDate
+        getTasksForDate,
+        getAllTasksGroupedByDate
     } = useReservation();
     
     // Refs to track state
@@ -45,6 +48,7 @@ export default function HomeScreen() {
                     const savedDate = new Date(savedDateStr);
                     setSelectedDate(savedDate);
                     setSelectedMonth(savedDate);
+                    currentVisibleDateRef.current = savedDate;
                 }
             } catch (error) {
                 console.error('Error loading persisted date:', error);
@@ -76,23 +80,18 @@ export default function HomeScreen() {
             fetchAllCleaningTasks().then(() => {
                 setDataLoaded(true);
                 console.log('[HomeScreen] Initial data loaded');
-                
-                // Update tasks for selected date after initial load
-                const tasks = getTasksForDate(selectedDate);
-                setTasksForSelectedDate(tasks);
-                console.log(`[HomeScreen] Initial load: Found ${tasks.length} tasks for ${selectedDate.toDateString()}`);
             });
         }
-    }, [fetchAllCleaningTasks, dataLoaded, getTasksForDate, selectedDate]);
+    }, [fetchAllCleaningTasks, dataLoaded]);
 
-    // Update tasks for selected date when cleaningTasks changes (but not when selectedDate changes)
+    // Update all tasks when cleaningTasks changes
     useEffect(() => {
         if (isMounted.current && dataLoaded) {
-            const tasks = getTasksForDate(selectedDate);
-            setTasksForSelectedDate(tasks);
-            console.log(`[HomeScreen] Data changed: Found ${tasks.length} tasks for ${selectedDate.toDateString()}`);
+            const groupedTasks = getAllTasksGroupedByDate();
+            setAllTasks(groupedTasks);
+            console.log(`[HomeScreen] Data changed: Found ${groupedTasks.length} days with tasks`);
         }
-    }, [cleaningTasks, getTasksForDate, dataLoaded]);
+    }, [cleaningTasks, getAllTasksGroupedByDate, dataLoaded]);
 
     // Update calendar UI when tasks or dates change
     useEffect(() => {
@@ -118,6 +117,46 @@ export default function HomeScreen() {
             };
         }, [fetchAllCleaningTasks, dataLoaded, fetching])
     );
+
+    // Handle scroll events to update the selected date based on visible tasks
+    const handleScroll = useCallback((event) => {
+        if (!allTasks || allTasks.length === 0) return;
+        
+        const offsetY = event.nativeEvent.contentOffset.y;
+        const visibleHeight = event.nativeEvent.layoutMeasurement.height;
+        
+        // Estimate which date section is currently visible based on scroll position
+        // This is an approximation since we don't have direct access to element positions
+        const approximateHeaderHeight = 50;
+        const approximateTaskHeight = 200;
+        
+        let currentPosition = 0;
+        let visibleDateIndex = 0;
+        
+        // Find which date group is currently visible based on scroll position
+        for (let i = 0; i < allTasks.length; i++) {
+            const sectionHeight = approximateHeaderHeight + (allTasks[i].tasks.length * approximateTaskHeight);
+            
+            // If the middle of the visible area is within this section
+            if (offsetY + (visibleHeight / 2) >= currentPosition && 
+                offsetY + (visibleHeight / 2) < currentPosition + sectionHeight) {
+                visibleDateIndex = i;
+                break;
+            }
+            
+            currentPosition += sectionHeight;
+        }
+        
+        // Get the date of the visible section
+        const visibleDate = new Date(allTasks[visibleDateIndex].date);
+        
+        // Only update if the date has changed
+        if (!isSameDay(visibleDate, currentVisibleDateRef.current)) {
+            currentVisibleDateRef.current = visibleDate;
+            setSelectedDate(visibleDate);
+            console.log(`[HomeScreen] Scroll updated selected date to: ${visibleDate.toDateString()}`);
+        }
+    }, [allTasks]);
 
     // Generate calendar days for week view
     const generateCalendarDays = useCallback((centerDate = new Date()) => {
@@ -222,24 +261,40 @@ export default function HomeScreen() {
         
         // Update selected date
         setSelectedDate(newSelectedDate);
+        currentVisibleDateRef.current = newSelectedDate;
         
-        // Update tasks for the selected date
-        const tasks = getTasksForDate(newSelectedDate);
-        setTasksForSelectedDate(tasks);
-        
-        console.log(`[HomeScreen] Found ${tasks.length} tasks for newly selected date ${newSelectedDate.toDateString()}`);
-        
-        // Log task IDs for debugging
-        if (tasks.length > 0) {
-            tasks.forEach(task => {
-                console.log(`[HomeScreen] Task for ${newSelectedDate.toDateString()}: ${task._id}, Property: ${task.propertyId?.name}`);
-            });
-        }
+        // Scroll to the selected date's tasks
+        scrollToDate(newSelectedDate);
 
         // Update the selected month if the date is in a different month
         if (newSelectedDate.getMonth() !== selectedMonth.getMonth() ||
             newSelectedDate.getFullYear() !== selectedMonth.getFullYear()) {
             setSelectedMonth(newSelectedDate);
+        }
+    };
+    
+    // Scroll to tasks for a specific date
+    const scrollToDate = (date) => {
+        // Find the index of the date group in allTasks
+        const dateStr = date.toDateString();
+        const dateIndex = allTasks.findIndex(group => 
+            new Date(group.date).toDateString() === dateStr
+        );
+        
+        if (dateIndex >= 0 && scrollViewRef.current) {
+            // Calculate approximate scroll position based on date index
+            // This is an estimation - each date section height can vary
+            const approximateHeaderHeight = 50;
+            const approximateTaskHeight = 200;
+            
+            let scrollPosition = 0;
+            for (let i = 0; i < dateIndex; i++) {
+                scrollPosition += approximateHeaderHeight + (allTasks[i].tasks.length * approximateTaskHeight);
+            }
+            
+            // Scroll to the calculated position
+            scrollViewRef.current.scrollTo({ y: scrollPosition, animated: true });
+            console.log(`[HomeScreen] Scrolling to date: ${dateStr} at position ~${scrollPosition}`);
         }
     };
 
@@ -328,34 +383,38 @@ export default function HomeScreen() {
         setSelectedMonth(nextYear);
     };
 
-    // Handle end reached (when user scrolls to bottom)
-    const handleEndReached = () => {
-        console.log('[HomeScreen] End of list reached, loading next day');
+    // Render a date header
+    const renderDateHeader = (date) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         
-        // Find the next day with tasks
-        const findNextDayWithTasks = () => {
-            // Start from the day after selected date
-            const nextDay = new Date(selectedDate);
-            nextDay.setDate(nextDay.getDate() + 1);
-            
-            // Look ahead up to 30 days
-            for (let i = 0; i < 30; i++) {
-                const tasksForDay = getTasksForDate(nextDay);
-                if (tasksForDay.length > 0) {
-                    console.log(`[HomeScreen] Found next day with tasks: ${nextDay.toDateString()}`);
-                    return nextDay;
-                }
-                nextDay.setDate(nextDay.getDate() + 1);
-            }
-            return null;
-        };
+        const dateObj = new Date(date);
+        const isToday = dateObj.toDateString() === today.toDateString();
         
-        const nextDayWithTasks = findNextDayWithTasks();
-        if (nextDayWithTasks) {
-            handleDateSelect(nextDayWithTasks);
+        const isTomorrow = new Date(today);
+        isTomorrow.setDate(today.getDate() + 1);
+        const isTomorrowDate = dateObj.toDateString() === isTomorrow.toDateString();
+        
+        let dateLabel;
+        if (isToday) {
+            dateLabel = "Today";
+        } else if (isTomorrowDate) {
+            dateLabel = "Tomorrow";
         } else {
-            console.log('[HomeScreen] No tasks found in the next 30 days');
+            dateLabel = "";
         }
+        
+        return (
+            <View 
+                key={`header-${date}`} 
+                style={styles.dateHeader}
+            >
+                <Text style={styles.dateHeaderText}>
+                    {dateLabel ? `${dateLabel} - ` : ""}
+                    {format(new Date(date), 'EEE, MMM d yyyy')}
+                </Text>
+            </View>
+        );
     };
 
     // Render a task
@@ -410,36 +469,33 @@ export default function HomeScreen() {
         const guestName = task.reservationDetails?.guest?.name || 'Paula Minorelli';
 
         return (
-            <TouchableOpacity  onPress={() => handleTaskPress(task)}>
+            <TouchableOpacity key={_id} onPress={() => handleTaskPress(task)}>
+                <View style={styles.taskCard}>
+                    <Text style={styles.propertyTitle}>{propertyName}</Text>
+                    <Text style={styles.addressText}>{formattedAddress}</Text>
+                    
+                    <View style={styles.timeInfo}>
+                        <Text style={styles.timeInfoText}>
+                            Check-in: {formatDate(checkInDate)} • {formatTime(checkInDate)}
+                        </Text>
+                        <Text style={styles.timeInfoText}>
+                            Check-out: {formatDate(checkOutDate)} • {formatTime(checkOutDate)}
+                        </Text>
+                    </View>
+                    
+                    <Text style={styles.reservationId}>Reservation ID: {reservationId ? reservationId.slice(-8).toUpperCase() : 'N/A'} </Text>
 
-            <View style={styles.taskCard} key={_id}>
-                <Text style={styles.propertyTitle}>{propertyName}</Text>
-                <Text style={styles.addressText}>{formattedAddress}</Text>
-                
-                <View style={styles.timeInfo}>
-                    <Text style={styles.timeInfoText}>
-                        Check-in: {formatDate(checkInDate)} • {formatTime(checkInDate)}
-                    </Text>
-                    <Text style={styles.timeInfoText}>
-                        Check-out: {formatDate(checkOutDate)} • {formatTime(checkOutDate)}
-                    </Text>
+                    <Text style={styles.reservationId}>Guest: {guestName} </Text>
+                    
+                    <TouchableOpacity 
+                        style={styles.bookingInfoButton}
+                        onPress={() => handleBookingInfoPress(task)}
+                    >
+                        <Ionicons name="information-circle-outline" size={16} color="#00BFA6" />
+                        <Text style={styles.bookingInfoText}>Booking Info</Text>
+                        <Ionicons name="chevron-down" size={16} color="#00BFA6" />
+                    </TouchableOpacity>
                 </View>
-                
-                <Text style={styles.reservationId}>Reservation ID: {reservationId ? reservationId.slice(-8).toUpperCase() : 'N/A'} </Text>
-
-                <Text style={styles.reservationId}>Guest: {guestName} </Text>
-                
-              
-                
-                <TouchableOpacity 
-                    style={styles.bookingInfoButton}
-                    onPress={() => handleBookingInfoPress(task)}
-                >
-                    <Ionicons name="information-circle-outline" size={16} color="#00BFA6" />
-                    <Text style={styles.bookingInfoText}>Booking Info</Text>
-                    <Ionicons name="chevron-down" size={16} color="#00BFA6" />
-                </TouchableOpacity>
-            </View>
             </TouchableOpacity>
         );
     };
@@ -504,13 +560,6 @@ export default function HomeScreen() {
                 </View>
             )}
 
-            {/* Display selected date */}
-            <View style={styles.selectedDateHeader}>
-                <Text style={styles.selectedDateText}>
-                    Today - {format(selectedDate, 'EEE, MMM d yyyy')}
-                </Text>
-            </View>
-
             {loading && !dataLoaded ? (
                 <View style={styles.centeredContent}>
                     <ActivityIndicator size="large" color="#00BFA6" />
@@ -528,10 +577,10 @@ export default function HomeScreen() {
                         <Text style={styles.retryButtonText}>Retry</Text>
                     </TouchableOpacity>
                 </View>
-            ) : tasksForSelectedDate.length === 0 ? (
+            ) : allTasks.length === 0 ? (
                 <View style={styles.centeredContent}>
                     <Ionicons name="calendar-outline" size={64} color="#CCCCCC" />
-                    <Text style={styles.noTasksText}>No cleaning requests for this date</Text>
+                    <Text style={styles.noTasksText}>No cleaning requests found</Text>
                     {dataLoaded ? null : (
                         <TouchableOpacity
                             style={styles.retryButton}
@@ -543,16 +592,19 @@ export default function HomeScreen() {
                 </View>
             ) : (
                 <ScrollView
+                    ref={scrollViewRef}
                     style={styles.taskListContainer}
                     contentContainerStyle={styles.taskListContent}
                     showsVerticalScrollIndicator={true}
-                    onScrollEndDrag={() => {
-                        if (tasksForSelectedDate.length > 0) {
-                            handleEndReached();
-                        }
-                    }}
+                    onScroll={handleScroll}
+                    scrollEventThrottle={16}
                 >
-                    {tasksForSelectedDate.map(task => renderTask(task))}
+                    {allTasks.map(dateGroup => (
+                        <React.Fragment key={dateGroup.date}>
+                            {renderDateHeader(dateGroup.date)}
+                            {dateGroup.tasks.map(task => renderTask(task))}
+                        </React.Fragment>
+                    ))}
                 </ScrollView>
             )}
         </View>
@@ -742,5 +794,16 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '500',
         marginHorizontal: 8,
+    },
+    dateHeader: {
+        padding: 8,
+        backgroundColor: '#f0f0f0',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+    },
+    dateHeaderText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333333',
     },
 }); 

@@ -393,6 +393,49 @@ export const useReservation = () => {
         }
     }, [fetching, updateTaskCache]);
 
+    /**
+     * Get all tasks grouped by date
+     * @returns {Array} Array of objects with date and tasks
+     */
+    const getAllTasksGroupedByDate = useCallback(() => {
+        if (!cleaningTasks || cleaningTasks.length === 0) {
+            return [];
+        }
+        
+        // Create a map to group tasks by date
+        const tasksByDate = new Map();
+        
+        cleaningTasks.forEach(task => {
+            // Skip pending tasks if needed
+            // if (task.status === STATUS.PENDING) return;
+            
+            // Get the task date from checkOutDate or reservationDetails.checkOut
+            const taskDate = task.checkOutDate || task.reservationDetails?.checkOut;
+            if (!taskDate) return;
+            
+            const date = new Date(taskDate);
+            date.setHours(0, 0, 0, 0);
+            const dateStr = date.toDateString();
+            
+            if (!tasksByDate.has(dateStr)) {
+                tasksByDate.set(dateStr, {
+                    date: date,
+                    tasks: []
+                });
+            }
+            
+            tasksByDate.get(dateStr).tasks.push(task);
+        });
+        
+        // Convert map to array and sort by date
+        const result = Array.from(tasksByDate.values()).sort((a, b) => 
+            a.date.getTime() - b.date.getTime()
+        );
+        
+        console.log(`[getAllTasksGroupedByDate] Found ${result.length} days with tasks`);
+        return result;
+    }, [cleaningTasks]);
+
     return {
         cleaningTasks,
         loading,
@@ -412,6 +455,7 @@ export const useReservation = () => {
         taskCache,
         getAllCachedTasks,
         clearTaskCache,
-        getTasksForDate
+        getTasksForDate,
+        getAllTasksGroupedByDate
     };
 }; 
