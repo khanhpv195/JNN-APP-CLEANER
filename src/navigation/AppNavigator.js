@@ -1,21 +1,21 @@
-import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from "@expo/vector-icons";
-import { useSelector } from 'react-redux';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSelector } from 'react-redux';
 
-import LoginScreen from '../screens/LoginScreen';
-import ForgotPasswordScreen from '../screens/authentication/ForgotPassword';
-import SettingsScreen from '../screens/SettingsScreen';
-import ThemeSettingsScreen from '../screens/ThemeSettingsScreen';
-import LanguageSettingsScreen from '../screens/LanguageSettingsScreen';
-import HomeScreen from '../screens/HomeScreen';
-import TaskDetailsScreen from '../screens/TaskDetailsScreen';
-import RequestScreen from '../screens/RequestScreen';
-import PropertyProblemScreen from '../screens/PropertyProblemScreen';
 import AccountBankScreen from '../screens/AccountBankScreen';
+import ForgotPasswordScreen from '../screens/authentication/ForgotPassword';
 import CompletedChecklistScreen from '../screens/CompletedChecklistScreen';
+import HomeScreen from '../screens/HomeScreen';
+import LanguageSettingsScreen from '../screens/LanguageSettingsScreen';
+import LoginScreen from '../screens/LoginScreen';
+import PropertyProblemScreen from '../screens/PropertyProblemScreen';
+import RequestScreen from '../screens/RequestScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import TaskDetailsScreen from '../screens/TaskDetailsScreen';
+import ThemeSettingsScreen from '../screens/ThemeSettingsScreen';
 import { useTheme } from '../shared/theme';
 import InventoryNavigator from './inventory';
 

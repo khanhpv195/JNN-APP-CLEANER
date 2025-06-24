@@ -6,10 +6,140 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Debug logs for API requests - use for troubleshooting
 const DEBUG_API = true;
 
+// Set to false to use real API instead of mock data
+const USE_MOCK_API = false;
+
 // Ensure GATEWAY_URL doesn't end with a slash
 const GATEWAY_URL = API_URL || 'https://api.swapbnb.io/moon';
 
 console.log('GATEWAY_URL:', GATEWAY_URL);
+console.log('Using mock API:', USE_MOCK_API ? 'Yes' : 'No');
+
+// Define mock APIs for development/testing
+const mockApis = {};
+
+// Mock data for tasks
+const generateMockTasks = () => {
+  const mockTasks = [];
+  const today = new Date();
+  
+  // Generate tasks for current month and next month
+  for (let monthOffset = 0; monthOffset < 2; monthOffset++) {
+    const month = today.getMonth() + monthOffset;
+    const year = today.getFullYear() + (month > 11 ? 1 : 0);
+    const normalizedMonth = month % 12;
+    
+    const daysInMonth = new Date(year, normalizedMonth + 1, 0).getDate();
+    
+    // Create tasks for every 3rd day
+    for (let i = 1; i <= daysInMonth; i++) {
+      if (i % 3 === 0) {
+        const taskDate = new Date(year, normalizedMonth, i);
+        
+        // Create 1-3 tasks per date to show multiple properties on the same day
+        const tasksPerDay = Math.floor(Math.random() * 3) + 1;
+        
+        for (let j = 1; j <= tasksPerDay; j++) {
+          const taskId = `task-${monthOffset}-${i}-${j}`;
+          const propertyId = `property-${monthOffset}-${i}-${j}`;
+          const propertyNumber = (i * 100) + j;
+          const streetNumber = 1000 + propertyNumber;
+          
+          mockTasks.push({
+            _id: taskId,
+            status: 'COMPLETED',
+            checkInDate: new Date(taskDate.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+            checkOutDate: taskDate.toISOString(),
+            propertyId: {
+              _id: propertyId,
+              name: `Property ${propertyNumber}`,
+              address: {
+                display: `${streetNumber} Main St, City, State`,
+                street: `${streetNumber} Main St`,
+                city: 'City',
+                state: 'State',
+                postcode: '12345'
+              }
+            },
+            reservationId: `res-${100000 + propertyNumber}`,
+            reservationDetails: {
+              checkIn: new Date(taskDate.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+              checkOut: taskDate.toISOString(),
+              guest: {
+                name: `Guest ${propertyNumber}`,
+                email: `guest${propertyNumber}@example.com`
+              },
+              numberOfGuests: Math.floor(Math.random() * 4) + 1
+            }
+          });
+        }
+      }
+    }
+  }
+  
+  console.log(`Generated ${mockTasks.length} mock tasks`);
+  return mockTasks;
+};
+
+// Cache mock tasks to ensure consistency
+const MOCK_TASKS = generateMockTasks();
+
+// Mock implementation for listAcceptedCleaningTasks
+mockApis['/listAcceptedCleaningTasks'] = async (params) => {
+  console.log('Using mock implementation for /listAcceptedCleaningTasks', params);
+  
+  // If a month parameter is specified, filter tasks for that month
+  if (params?.body?.month) {
+    const [year, month] = params.body.month.split('-').map(Number);
+    
+    const filteredTasks = MOCK_TASKS.filter(task => {
+      const taskDate = new Date(task.checkOutDate || task.reservationDetails?.checkOut);
+      return taskDate.getFullYear() === year && taskDate.getMonth() === month - 1;
+    });
+    
+    console.log(`Mock API: Filtered ${filteredTasks.length} tasks for month ${params.body.month}`);
+    
+    // Log the first few tasks for debugging
+    if (filteredTasks.length > 0) {
+      console.log('Sample tasks:');
+      filteredTasks.slice(0, 3).forEach(task => {
+        const taskDate = new Date(task.checkOutDate);
+        console.log(`Task ${task._id}, Date: ${taskDate.toDateString()}, Property: ${task.propertyId.name}`);
+      });
+    }
+    
+    return { data: filteredTasks };
+  }
+  
+  // If a specific date is provided, filter tasks for that date
+  if (params?.body?.date) {
+    const dateStr = params.body.date; // Format: YYYY-MM-DD
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const requestDate = new Date(year, month - 1, day);
+    requestDate.setHours(0, 0, 0, 0);
+    
+    const filteredTasks = MOCK_TASKS.filter(task => {
+      const taskDate = new Date(task.checkOutDate || task.reservationDetails?.checkOut);
+      taskDate.setHours(0, 0, 0, 0);
+      return taskDate.toDateString() === requestDate.toDateString();
+    });
+    
+    console.log(`Mock API: Filtered ${filteredTasks.length} tasks for date ${dateStr} (${requestDate.toDateString()})`);
+    
+    // Log all tasks for this date
+    if (filteredTasks.length > 0) {
+      console.log('Tasks for this date:');
+      filteredTasks.forEach(task => {
+        console.log(`Task ${task._id}, Property: ${task.propertyId.name}`);
+      });
+    }
+    
+    return { data: filteredTasks };
+  }
+  
+  // Return all tasks if no filters
+  return { data: MOCK_TASKS };
+};
 
 // Generate api url
 const generateApiUrl = ({ endpoint }) => {
@@ -45,6 +175,18 @@ const makeRequest = async (method, url, params = {}) => {
     ...(tokenString && { 'user-access-token': tokenString }),
     ...customHeaders
   };
+
+  // Check for mock implementation
+  const endpoint = url.replace(`${GATEWAY_URL}/api`, '');
+  if (USE_MOCK_API && mockApis[endpoint]) {
+    console.log(`Using mock implementation for ${endpoint}`);
+    try {
+      return await mockApis[endpoint](params);
+    } catch (error) {
+      console.error('Mock API error:', error);
+      throw error;
+    }
+  }
 
   try {
     const response = await fetch(url, {

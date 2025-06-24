@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const MonthCalendar = ({ 
     months, 
@@ -9,6 +9,19 @@ const MonthCalendar = ({
     onMonthSelect 
 }) => {
     const currentMonth = months.find(m => m.month === selectedMonth.getMonth());
+
+    // Debug logging
+    useEffect(() => {
+        if (currentMonth) {
+            const daysWithTasks = currentMonth.days.filter(day => !day.empty && day.hasTask);
+            console.log(`[MonthCalendar] Current month: ${currentMonth.monthName}, days with tasks: ${daysWithTasks.length}`);
+            
+            if (daysWithTasks.length > 0) {
+                console.log(`[MonthCalendar] Days with tasks:`, 
+                    daysWithTasks.map(day => `${day.fullDate.getDate()}: ${day.tasksCount} tasks`).join(', '));
+            }
+        }
+    }, [currentMonth]);
 
     if (!currentMonth) return null;
 
@@ -29,40 +42,47 @@ const MonthCalendar = ({
             </View>
 
             <View style={styles.monthDaysGrid}>
-                {currentMonth.days.map((day, index) => (
-                    <TouchableOpacity
-                        key={index}
-                        style={[
-                            styles.calendarDay,
-                            day.empty && styles.emptyDay,
-                            day.isToday && styles.calendarToday,
-                            day.fullDate &&
-                            selectedDate.toDateString() === day.fullDate.toDateString() &&
-                            styles.calendarDaySelected
-                        ]}
-                        onPress={() => day.fullDate && onDateSelect(day.fullDate)}
-                        disabled={day.empty}
-                    >
-                        <Text style={[
-                            styles.calendarDayText,
-                            day.isToday && styles.todayText,
-                            day.fullDate &&
-                            selectedDate.toDateString() === day.fullDate.toDateString() &&
-                            styles.calendarDayTextSelected
-                        ]}>
-                            {day.day}
-                        </Text>
-                        
-                        {/* Display red dot for days with tasks */}
-                        {!day.empty && day.hasTask && (
-                            <View style={styles.taskDot}>
-                                {day.tasksCount > 1 ? (
-                                    <Text style={styles.taskCount}>{day.tasksCount}</Text>
-                                ) : null}
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                ))}
+                {currentMonth.days.map((day, index) => {
+                    // Debug log for days with tasks
+                    if (!day.empty && day.hasTask) {
+                        console.log(`[MonthCalendar] Rendering day ${day.day} with ${day.tasksCount} tasks`);
+                    }
+                    
+                    return (
+                        <TouchableOpacity
+                            key={index}
+                            style={[
+                                styles.calendarDay,
+                                day.empty && styles.emptyDay,
+                                day.isToday && styles.calendarToday,
+                                day.fullDate &&
+                                selectedDate.toDateString() === day.fullDate.toDateString() &&
+                                styles.calendarDaySelected
+                            ]}
+                            onPress={() => day.fullDate && onDateSelect(day.fullDate)}
+                            disabled={day.empty}
+                        >
+                            <Text style={[
+                                styles.calendarDayText,
+                                day.isToday && styles.todayText,
+                                day.fullDate &&
+                                selectedDate.toDateString() === day.fullDate.toDateString() &&
+                                styles.calendarDayTextSelected
+                            ]}>
+                                {day.day}
+                            </Text>
+                            
+                            {/* Display red dot for days with tasks */}
+                            {!day.empty && day.hasTask && (
+                                <View style={styles.taskDot}>
+                                    {day.tasksCount > 1 ? (
+                                        <Text style={styles.taskCount}>{day.tasksCount}</Text>
+                                    ) : null}
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
 
             <View style={styles.monthSelector}>

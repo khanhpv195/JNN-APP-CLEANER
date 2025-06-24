@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import TaskApis from '../shared/api/taskApis';
-import { POST } from '../shared/api/fetch';
 import format from 'date-fns/format';
+import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import { STATUS } from '../constants/status';
+import TaskApis from '../shared/api/taskApis';
 
 /**
  * Custom hook for managing cleaning tasks
@@ -25,6 +24,12 @@ export const useReservation = () => {
      */
     const fetchCleaningTasks = useCallback(async (date = new Date(), status = null) => {
         try {
+            if (fetching) {
+                console.log('Already fetching data, skipping redundant request');
+                return [];
+            }
+            
+            setFetching(true);
             setLoading(true);
             setError(null);
 
@@ -34,7 +39,7 @@ export const useReservation = () => {
 
             // Build request body
             const requestBody = {
-                date: date ? formattedDate : null,
+                date: formattedDate,
             };
 
             // Add status filter if provided
@@ -46,123 +51,164 @@ export const useReservation = () => {
             // Debug request body
             console.log('Request body:', JSON.stringify(requestBody));
 
-            const response = await POST('/listPendingCleaningTasks', {
-                body: requestBody,
-            }).catch(error => {
-                // Check if the error is a permission error
-                if (error.message && error.message.includes('access denied')) {
-                    // Handle permission error without affecting login state
-                    setError('You do not have permission to access cleaning tasks');
-                    // Keep the tasks list empty but don't throw further
-                    setCleaningTasks([]);
-                    console.log('Permission error handled in useReservation hook:', error.message);
-                    // Return empty data to prevent further error handling
-                    return { data: [] };
-                }
-                // Re-throw other errors to be caught by the outer catch
-                throw error;
-            });
-
+            const response = await TaskApis.listAcceptedCleaningTasks(requestBody);
 
             if (response && response.data) {
-                setCleaningTasks(response.data);
-                return response.data;
+                const tasks = response.data;
+                console.log(`Fetched ${tasks.length} tasks for date ${formattedDate}`);
+                
+                // Update the task cache
+                updateTaskCache(tasks);
+                
+                // Update the cleaning tasks state
+                setCleaningTasks(tasks);
+                
+                return tasks;
             }
-            return response
+            return [];
         } catch (err) {
             console.error('Error fetching cleaning tasks:', err);
             setError(err.message || 'Failed to load cleaning tasks');
 
             // Show error alert for non-permission errors
-            if (!err.message.includes('access denied')) {
+            if (!err.message?.includes('access denied')) {
                 Alert.alert(
                     'Error Loading Tasks',
                     err.message || 'An error occurred while loading tasks',
                     [{ text: 'OK' }]
                 );
             }
+            return [];
         } finally {
             setLoading(false);
+            setFetching(false);
         }
+    }, [fetching]);
+
+    // Helper function to update task cache
+    const updateTaskCache = useCallback((tasks) => {
+        // Group tasks by date
+        const tasksByDate = new Map();
+        tasks.forEach(task => {
+            const taskDate = task.checkOutDate || task.reservationDetails?.checkOut;
+            if (taskDate) {
+                const dateKey = format(new Date(taskDate), 'yyyy-MM-dd');
+                if (!tasksByDate.has(dateKey)) {
+                    tasksByDate.set(dateKey, []);
+                }
+                tasksByDate.get(dateKey).push(task);
+            }
+        });
+        
+        // Update cache with new data
+        setTaskCache(prevCache => {
+            const newCache = new Map(prevCache);
+            tasksByDate.forEach((dateTasks, dateKey) => {
+                newCache.set(dateKey, dateTasks);
+            });
+            return newCache;
+        });
     }, []);
 
-
     //  fetch all cleaning tasks, != pending
-    const fetchCleaningTasksNotPending = useCallback(async (date = new Date()) => {
+    const fetchCleaningTasksNotPending = useCallback(async (date = null) => {
         try {
+            // Nếu đang tải dữ liệu, không gọi API nữa
+            if (fetching) {
+                console.log('Already fetching data, skipping redundant request');
+                return [];
+            }
+            
+            setFetching(true);
             setLoading(true);
             setError(null);
 
-            // Format the date for API (YYYY-MM-DD)
-            const localDate = new Date(date);
-            const formattedDate = format(localDate, 'yyyy-MM-dd');
-
-            // Check cache first
-            const cacheKey = formattedDate;
-            if (taskCache.has(cacheKey)) {
-                console.log(`Using cached tasks for date: ${formattedDate}`);
-                const cachedTasks = taskCache.get(cacheKey);
-                
-                // Important: Always update the cleaningTasks state with cached data
-                // This ensures the UI always shows the tasks even when toggling views
-                setCleaningTasks(prevTasks => {
-                    // Merge with existing tasks to ensure we don't lose any
-                    const taskIds = new Set(prevTasks.map(task => task._id));
-                    const newTasks = [...prevTasks];
-                    
-                    for (const task of cachedTasks) {
-                        if (!taskIds.has(task._id)) {
-                            newTasks.push(task);
-                        }
-                    }
-                    
-                    return newTasks;
-                });
-                
-                setLoading(false);
-                return cachedTasks;
+            // Tạo request body
+            const requestBody = {};
+            
+            // Nếu có date, thêm vào request body
+            if (date) {
+                const formattedDate = format(new Date(date), 'yyyy-MM-dd');
+                requestBody.date = formattedDate;
+                console.log(`Fetching tasks for specific date: ${formattedDate}`);
+            } else {
+                console.log('Fetching all accepted tasks');
             }
 
-            console.log(`Fetching tasks from API for date: ${formattedDate}`);
-            const response = await POST('/listAcceptedCleaningTasks', {
-                body: {
-                    date: formattedDate
-                }
-            });
+            const response = await TaskApis.listAcceptedCleaningTasks(requestBody);
 
             if (response && response.data) {
-                // Update cache with new data
-                setTaskCache(prevCache => {
-                    const newCache = new Map(prevCache);
-                    newCache.set(cacheKey, response.data);
-                    return newCache;
-                });
-
-                // Update cleaningTasks state, preserving existing tasks
-                setCleaningTasks(prevTasks => {
-                    // Merge with existing tasks to ensure we don't lose any
-                    const taskIds = new Set(prevTasks.map(task => task._id));
-                    const newTasks = [...prevTasks];
-                    
-                    for (const task of response.data) {
-                        if (!taskIds.has(task._id)) {
-                            newTasks.push(task);
-                        }
-                    }
-                    
-                    return newTasks;
-                });
+                const tasks = response.data;
+                console.log(`Fetched ${tasks.length} tasks`);
                 
-                return response.data;
+                // Update the task cache
+                updateTaskCache(tasks);
+                
+                // Cập nhật state với tất cả các tác vụ
+                setCleaningTasks(tasks);
+                
+                return tasks;
             }
-            return response;
+            return [];
         } catch (err) {
             console.error('Error fetching cleaning tasks:', err);
             setError(err.message || 'Failed to load cleaning tasks');
+            return [];
         } finally {
             setLoading(false);
+            setFetching(false);
         }
-    }, [taskCache]);
+    }, [fetching, updateTaskCache]);
+
+    /**
+     * Fetch cleaning tasks for an entire month
+     * @param {Date} date - Any date in the target month
+     * @returns {Promise} - API response with tasks for the month
+     */
+    const fetchCleaningTasksForMonth = useCallback(async (date = new Date()) => {
+        try {
+            if (fetching) {
+                console.log('Already fetching data, skipping redundant request');
+                return [];
+            }
+            
+            setFetching(true);
+            setLoading(true);
+            setError(null);
+            
+            // Get the first day of the month
+            const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+            const formattedMonth = format(firstDayOfMonth, 'yyyy-MM');
+            
+            console.log(`Fetching tasks for entire month: ${formattedMonth}`);
+            
+            // Use the existing API endpoint
+            const response = await TaskApis.listAcceptedCleaningTasks({
+                month: formattedMonth
+            });
+
+            if (response && response.data) {
+                const tasks = response.data;
+                console.log(`Fetched ${tasks.length} tasks for month ${formattedMonth}`);
+                
+                // Update the task cache
+                updateTaskCache(tasks);
+                
+                // Update state with all tasks
+                setCleaningTasks(tasks);
+                
+                return tasks;
+            }
+            return [];
+        } catch (err) {
+            console.error('Error fetching cleaning tasks for month:', err);
+            setError(err.message || 'Failed to load cleaning tasks for month');
+            return [];
+        } finally {
+            setLoading(false);
+            setFetching(false);
+        }
+    }, [fetching, updateTaskCache]);
 
     /**
      * Get details of a specific cleaning task
@@ -251,38 +297,121 @@ export const useReservation = () => {
         return allTasks;
     }, [taskCache]);
 
-    // Clear task cache (useful for refresh)
+    // Clear task cache
     const clearTaskCache = useCallback(() => {
         setTaskCache(new Map());
+        setCleaningTasks([]);
     }, []);
+
+    // Force a refresh of data
+    const refreshTasks = () => {
+        setRefreshKey(prev => prev + 1);
+    };
 
     const uploadImage = async (formData) => {
         try {
+            setLoading(true);
             const response = await TaskApis.uploadImage(formData);
-            return response.data;
+            return response;
         } catch (error) {
             console.error('Error uploading image:', error);
-            throw error;
+            return {
+                success: false,
+                message: error.message || 'Failed to upload image'
+            };
+        } finally {
+            setLoading(false);
         }
     };
+
+    /**
+     * Group tasks by date
+     * @param {Date} date - Date to filter tasks for
+     * @returns {Array} - Tasks for the specified date
+     */
+    const getTasksForDate = useCallback((date) => {
+        if (!date || !cleaningTasks || cleaningTasks.length === 0) {
+            return [];
+        }
+        
+        const compareDate = new Date(date);
+        compareDate.setHours(0, 0, 0, 0);
+        
+        return cleaningTasks.filter(task => {
+            // Skip pending tasks if needed
+            if (task.status === STATUS.PENDING) return false;
+            
+            // Get the task date from checkOutDate or reservationDetails.checkOut
+            const taskDate = new Date(task.checkOutDate || task.reservationDetails?.checkOut);
+            taskDate.setHours(0, 0, 0, 0);
+            
+            return taskDate.toDateString() === compareDate.toDateString();
+        });
+    }, [cleaningTasks]);
+
+    /**
+     * Fetch all cleaning tasks without date filtering
+     * This will get all tasks from the API in a single call
+     * @returns {Promise} - API response with all tasks
+     */
+    const fetchAllCleaningTasks = useCallback(async () => {
+        try {
+            if (fetching) {
+                console.log('Already fetching data, skipping redundant request');
+                return [];
+            }
+            
+            setFetching(true);
+            setLoading(true);
+            setError(null);
+            
+            console.log('Fetching all cleaning tasks (no date filter)');
+            
+            // Call API without any date filter to get all tasks
+            const response = await TaskApis.listAcceptedCleaningTasks({});
+
+            if (response && response.data) {
+                const tasks = response.data;
+                console.log(`Fetched ${tasks.length} total tasks`);
+                
+                // Update the task cache
+                updateTaskCache(tasks);
+                
+                // Update state with all tasks
+                setCleaningTasks(tasks);
+                
+                return tasks;
+            }
+            return [];
+        } catch (err) {
+            console.error('Error fetching all cleaning tasks:', err);
+            setError(err.message || 'Failed to load cleaning tasks');
+            return [];
+        } finally {
+            setLoading(false);
+            setFetching(false);
+        }
+    }, [fetching, updateTaskCache]);
 
     return {
         cleaningTasks,
         loading,
         fetching,
+        setFetching,
         error,
-        clearError,
         fetchCleaningTasks,
         fetchCleaningTasksNotPending,
+        fetchCleaningTasksForMonth,
+        fetchAllCleaningTasks,
         getTaskDetails,
         updateTask,
         uploadImage,
         updateProperty,
-        refreshKey,
-        setRefreshKey,
-        setFetching,
+        clearError,
+        refreshTasks,
+        taskCache,
         getAllCachedTasks,
         clearTaskCache,
-        taskCache
+        getTasksForDate
     };
 }; 

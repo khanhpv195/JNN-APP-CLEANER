@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { STATUS } from '../../constants/status';
 
 const TaskList = ({ 
@@ -10,7 +9,10 @@ const TaskList = ({
     loading, 
     onEndReached,
     onEndReachedThreshold,
-    ListFooterComponent 
+    ListFooterComponent,
+    style,
+    scrollEnabled = true,
+    showsVerticalScrollIndicator = true
 }) => {
     // Add state to prevent multiple onEndReached calls
     const [onEndReachedCalledDuringMomentum, setOnEndReachedCalledDuringMomentum] = useState(false);
@@ -178,13 +180,15 @@ const TaskList = ({
             data={tasks}
             keyExtractor={(item) => item.id || item._id}
             renderItem={renderTask}
-            contentContainerStyle={styles.taskList}
+            contentContainerStyle={[styles.taskList, style]}
             refreshing={loading}
             onRefresh={onRefresh}
             onEndReached={handleEndReached}
             onEndReachedThreshold={onEndReachedThreshold || 0.5}
             onMomentumScrollBegin={() => setOnEndReachedCalledDuringMomentum(false)}
             ListFooterComponent={ListFooterComponent}
+            scrollEnabled={scrollEnabled}
+            showsVerticalScrollIndicator={showsVerticalScrollIndicator}
         />
     );
 };
@@ -248,7 +252,7 @@ const styles = StyleSheet.create({
         lineHeight: 18,
     },
     timeSection: {
-        marginBottom: 12,
+        marginBottom: 16,
     },
     timeRow: {
         flexDirection: 'row',
@@ -257,22 +261,21 @@ const styles = StyleSheet.create({
     },
     timeLabel: {
         fontSize: 14,
-        fontWeight: '600',
-        color: '#333',
+        color: '#666',
         width: 50,
     },
     timeValue: {
         fontSize: 14,
-        color: '#666',
-        flex: 1,
+        color: '#333',
+        fontWeight: '500',
     },
     codeSection: {
-        marginBottom: 16,
+        alignItems: 'flex-end',
     },
     codeText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#333',
+        fontSize: 12,
+        color: '#666',
+        fontFamily: 'monospace',
     },
 });
 

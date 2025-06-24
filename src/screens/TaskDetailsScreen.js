@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, ToastAndroid, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import ChecklistModal from '../components/ChecklistModal';
-import { format } from 'date-fns';
-import { useReservation } from '../hooks/useReservation';
-import { STATUS } from '../constants/status';
 import { useFocusEffect } from '@react-navigation/native';
+import { format } from 'date-fns';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, ToastAndroid, TouchableOpacity, View } from 'react-native';
+import ChecklistModal from '../components/ChecklistModal';
+import { STATUS } from '../constants/status';
+import { useReservation } from '../hooks/useReservation';
 
 export default function TaskDetailsScreen({ route, navigation }) {
     const [showChecklist, setShowChecklist] = useState(false);
