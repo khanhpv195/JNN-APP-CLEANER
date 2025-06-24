@@ -263,7 +263,7 @@ export default function HomeScreen() {
     // Handle task press
     const handleTaskPress = (task) => {
         console.log('[HomeScreen] Task pressed:', task._id);
-        navigation.navigate('TaskDetails', {
+        navigation.navigate('TaskDetail', {
             taskId: task._id,
             task: task,
             refreshOnReturn: true
