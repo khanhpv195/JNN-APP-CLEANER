@@ -328,6 +328,36 @@ export default function HomeScreen() {
         setSelectedMonth(nextYear);
     };
 
+    // Handle end reached (when user scrolls to bottom)
+    const handleEndReached = () => {
+        console.log('[HomeScreen] End of list reached, loading next day');
+        
+        // Find the next day with tasks
+        const findNextDayWithTasks = () => {
+            // Start from the day after selected date
+            const nextDay = new Date(selectedDate);
+            nextDay.setDate(nextDay.getDate() + 1);
+            
+            // Look ahead up to 30 days
+            for (let i = 0; i < 30; i++) {
+                const tasksForDay = getTasksForDate(nextDay);
+                if (tasksForDay.length > 0) {
+                    console.log(`[HomeScreen] Found next day with tasks: ${nextDay.toDateString()}`);
+                    return nextDay;
+                }
+                nextDay.setDate(nextDay.getDate() + 1);
+            }
+            return null;
+        };
+        
+        const nextDayWithTasks = findNextDayWithTasks();
+        if (nextDayWithTasks) {
+            handleDateSelect(nextDayWithTasks);
+        } else {
+            console.log('[HomeScreen] No tasks found in the next 30 days');
+        }
+    };
+
     // Render a task
     const renderTask = (task) => {
         const {
@@ -516,6 +546,11 @@ export default function HomeScreen() {
                     style={styles.taskListContainer}
                     contentContainerStyle={styles.taskListContent}
                     showsVerticalScrollIndicator={true}
+                    onScrollEndDrag={() => {
+                        if (tasksForSelectedDate.length > 0) {
+                            handleEndReached();
+                        }
+                    }}
                 >
                     {tasksForSelectedDate.map(task => renderTask(task))}
                 </ScrollView>
