@@ -144,25 +144,20 @@ const TaskList = ({
                 {/* Time Information */}
                 <View style={styles.timeSection}>
                     <View style={styles.timeRow}>
-                        <Text style={styles.timeLabel}>Start:</Text>
+                        <Text style={styles.timeLabel}>Check-in:</Text>
                         <Text style={styles.timeValue}>
                             {checkin.date} • {checkin.time}
                         </Text>
                     </View>
                     <View style={styles.timeRow}>
-                        <Text style={styles.timeLabel}>End:</Text>
+                        <Text style={styles.timeLabel}>Check-out:</Text>
                         <Text style={styles.timeValue}>
                             {checkout.date} • {checkout.time}
                         </Text>
                     </View>
                 </View>
 
-                {/* Property Code */}
-                <View style={styles.codeSection}>
-                    <Text style={styles.codeText}>
-                        #{reservationId ? reservationId.slice(-8).toUpperCase() : 'N/A'}
-                    </Text>
-                </View>
+             
             </TouchableOpacity>
         );
     };

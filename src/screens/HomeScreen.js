@@ -6,7 +6,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MonthCalendar from '../components/home/MonthCalendar';
 import WeekCalendar from '../components/home/WeekCalendar';
-import { STATUS } from '../constants/status';
 import { useReservation } from '../hooks/useReservation';
 
 const SELECTED_DATE_KEY = '@cleaner_app/selected_date';
@@ -77,25 +76,23 @@ export default function HomeScreen() {
             fetchAllCleaningTasks().then(() => {
                 setDataLoaded(true);
                 console.log('[HomeScreen] Initial data loaded');
+                
+                // Update tasks for selected date after initial load
+                const tasks = getTasksForDate(selectedDate);
+                setTasksForSelectedDate(tasks);
+                console.log(`[HomeScreen] Initial load: Found ${tasks.length} tasks for ${selectedDate.toDateString()}`);
             });
         }
-    }, [fetchAllCleaningTasks, dataLoaded]);
+    }, [fetchAllCleaningTasks, dataLoaded, getTasksForDate, selectedDate]);
 
-    // Update tasks for selected date when cleaningTasks or selectedDate changes
+    // Update tasks for selected date when cleaningTasks changes (but not when selectedDate changes)
     useEffect(() => {
-        if (isMounted.current) {
+        if (isMounted.current && dataLoaded) {
             const tasks = getTasksForDate(selectedDate);
             setTasksForSelectedDate(tasks);
-            console.log(`[HomeScreen] Found ${tasks.length} tasks for selected date ${selectedDate.toDateString()}`);
-            
-            // Log task IDs for debugging
-            if (tasks.length > 0) {
-                tasks.forEach(task => {
-                    console.log(`[HomeScreen] Task for ${selectedDate.toDateString()}: ${task._id}, Property: ${task.propertyId?.name}`);
-                });
-            }
+            console.log(`[HomeScreen] Data changed: Found ${tasks.length} tasks for ${selectedDate.toDateString()}`);
         }
-    }, [cleaningTasks, selectedDate, getTasksForDate]);
+    }, [cleaningTasks, getTasksForDate, dataLoaded]);
 
     // Update calendar UI when tasks or dates change
     useEffect(() => {
@@ -223,7 +220,21 @@ export default function HomeScreen() {
         
         console.log(`[HomeScreen] Selected date: ${newSelectedDate.toDateString()}`);
         
+        // Update selected date
         setSelectedDate(newSelectedDate);
+        
+        // Update tasks for the selected date
+        const tasks = getTasksForDate(newSelectedDate);
+        setTasksForSelectedDate(tasks);
+        
+        console.log(`[HomeScreen] Found ${tasks.length} tasks for newly selected date ${newSelectedDate.toDateString()}`);
+        
+        // Log task IDs for debugging
+        if (tasks.length > 0) {
+            tasks.forEach(task => {
+                console.log(`[HomeScreen] Task for ${newSelectedDate.toDateString()}: ${task._id}, Property: ${task.propertyId?.name}`);
+            });
+        }
 
         // Update the selected month if the date is in a different month
         if (newSelectedDate.getMonth() !== selectedMonth.getMonth() ||
@@ -245,8 +256,17 @@ export default function HomeScreen() {
         // If there's no selected date in this month, set it to the 1st
         const currentSelectedMonth = selectedDate.getMonth();
         const currentSelectedYear = selectedDate.getFullYear();
+        
         if (currentSelectedMonth !== monthIndex || currentSelectedYear !== newDate.getFullYear()) {
-            setSelectedDate(newDate);
+            // Set selected date to the 1st of the month
+            const newSelectedDate = new Date(newDate);
+            setSelectedDate(newSelectedDate);
+            
+            // Update tasks for the selected date
+            const tasks = getTasksForDate(newSelectedDate);
+            setTasksForSelectedDate(tasks);
+            
+            console.log(`[HomeScreen] Month changed, found ${tasks.length} tasks for ${newSelectedDate.toDateString()}`);
         }
     };
 
@@ -360,38 +380,26 @@ export default function HomeScreen() {
         const guestName = task.reservationDetails?.guest?.name || 'Paula Minorelli';
 
         return (
+            <TouchableOpacity  onPress={() => handleTaskPress(task)}>
+
             <View style={styles.taskCard} key={_id}>
                 <Text style={styles.propertyTitle}>{propertyName}</Text>
                 <Text style={styles.addressText}>{formattedAddress}</Text>
                 
                 <View style={styles.timeInfo}>
                     <Text style={styles.timeInfoText}>
-                        Started: {formatDate(checkInDate)} • {formatTime(checkInDate)}
+                        Check-in: {formatDate(checkInDate)} • {formatTime(checkInDate)}
                     </Text>
                     <Text style={styles.timeInfoText}>
-                        Ended: {formatDate(checkOutDate)} • {formatTime(checkOutDate)}
+                        Check-out: {formatDate(checkOutDate)} • {formatTime(checkOutDate)}
                     </Text>
                 </View>
                 
-                <Text style={styles.reservationId}>#{reservationId ? reservationId.slice(-8).toUpperCase() : 'N/A'} {guestName}</Text>
+                <Text style={styles.reservationId}>Reservation ID: {reservationId ? reservationId.slice(-8).toUpperCase() : 'N/A'} </Text>
+
+                <Text style={styles.reservationId}>Guest: {guestName} </Text>
                 
-                <View style={styles.taskActions}>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => handleTaskPress(task)}>
-                        <Ionicons name="document-text-outline" size={20} color="#333" />
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity style={styles.actionButton} onPress={() => updateTask(task._id, { status: STATUS.COMPLETED })}>
-                        <Ionicons name="checkmark-outline" size={20} color="#333" />
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity style={styles.actionButton} onPress={() => console.log('Money action')}>
-                        <Ionicons name="cash-outline" size={20} color="#333" />
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity style={styles.actionButton} onPress={() => console.log('View action')}>
-                        <Ionicons name="eye-outline" size={20} color="#333" />
-                    </TouchableOpacity>
-                </View>
+              
                 
                 <TouchableOpacity 
                     style={styles.bookingInfoButton}
@@ -402,6 +410,7 @@ export default function HomeScreen() {
                     <Ionicons name="chevron-down" size={16} color="#00BFA6" />
                 </TouchableOpacity>
             </View>
+            </TouchableOpacity>
         );
     };
 
@@ -668,7 +677,7 @@ const styles = StyleSheet.create({
     },
     reservationId: {
         fontSize: 14,
-        fontWeight: '500',
+        fontWeight: '600',
         color: '#333',
         marginBottom: 12,
     },
