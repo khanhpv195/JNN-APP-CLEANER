@@ -300,28 +300,43 @@ export default function HomeScreen() {
 
     // Handle month selection
     const handleMonthSelect = (monthIndex) => {
-        console.log(`[HomeScreen] Month selected: ${monthIndex}`);
-        
-        const newDate = new Date(selectedMonth);
-        newDate.setMonth(monthIndex);
-        newDate.setDate(1);
-        
-        setSelectedMonth(newDate);
+        try {
+            // Validate monthIndex
+            if (typeof monthIndex !== 'number' || monthIndex < 0 || monthIndex > 11) {
+                console.error(`[HomeScreen] Invalid month index: ${monthIndex}`);
+                return;
+            }
+            
+            console.log(`[HomeScreen] Month selected: ${monthIndex}`);
+            
+            // Safely create new date
+            const newDate = new Date(selectedMonth.getFullYear(), monthIndex, 1);
+            
+            // Validate the created date
+            if (isNaN(newDate.getTime())) {
+                console.error(`[HomeScreen] Invalid date created for month: ${monthIndex}`);
+                return;
+            }
+            
+            setSelectedMonth(newDate);
 
-        // If there's no selected date in this month, set it to the 1st
-        const currentSelectedMonth = selectedDate.getMonth();
-        const currentSelectedYear = selectedDate.getFullYear();
-        
-        if (currentSelectedMonth !== monthIndex || currentSelectedYear !== newDate.getFullYear()) {
-            // Set selected date to the 1st of the month
-            const newSelectedDate = new Date(newDate);
-            setSelectedDate(newSelectedDate);
+            // If there's no selected date in this month, set it to the 1st
+            const currentSelectedMonth = selectedDate.getMonth();
+            const currentSelectedYear = selectedDate.getFullYear();
             
-            // Update tasks for the selected date
-            const tasks = getTasksForDate(newSelectedDate);
-            setTasksForSelectedDate(tasks);
-            
-            console.log(`[HomeScreen] Month changed, found ${tasks.length} tasks for ${newSelectedDate.toDateString()}`);
+            if (currentSelectedMonth !== monthIndex || currentSelectedYear !== newDate.getFullYear()) {
+                // Set selected date to the 1st of the month
+                const newSelectedDate = new Date(newDate);
+                setSelectedDate(newSelectedDate);
+                
+                // Update tasks for the selected date safely
+                if (getTasksForDate) {
+                    const tasks = getTasksForDate(newSelectedDate);
+                    console.log(`[HomeScreen] Month changed, found ${tasks.length} tasks for ${newSelectedDate.toDateString()}`);
+                }
+            }
+        } catch (error) {
+            console.error(`[HomeScreen] Error in handleMonthSelect:`, error);
         }
     };
 

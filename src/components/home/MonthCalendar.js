@@ -8,7 +8,13 @@ const MonthCalendar = ({
     onDateSelect, 
     onMonthSelect 
 }) => {
-    const currentMonth = months.find(m => m.month === selectedMonth.getMonth());
+    // Add safety checks
+    if (!months || !Array.isArray(months) || !selectedMonth) {
+        console.warn('[MonthCalendar] Invalid props received');
+        return null;
+    }
+    
+    const currentMonth = months.find(m => m && typeof m.month === 'number' && m.month === selectedMonth.getMonth());
 
     // Debug logging
     useEffect(() => {
@@ -94,7 +100,11 @@ const MonthCalendar = ({
                                 styles.monthButton,
                                 month.month === selectedMonth.getMonth() && styles.selectedMonthButton
                             ]}
-                            onPress={() => onMonthSelect(month.month)}
+                            onPress={() => {
+                                if (month && typeof month.month === 'number' && onMonthSelect) {
+                                    onMonthSelect(month.month);
+                                }
+                            }}
                         >
                             <Text style={[
                                 styles.monthButtonText,
