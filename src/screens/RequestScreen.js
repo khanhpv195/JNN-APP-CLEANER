@@ -11,9 +11,11 @@ export default function RequestScreen() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const refreshData = () => {
+        // Clear any existing fetching state
+        setFetching(false);
         // Make sure we explicitly pass the PENDING status
         console.log('Refreshing with status:', STATUS.PENDING);
-        fetchCleaningTasks(null, STATUS.PENDING);
+        fetchCleaningTasks(new Date(), STATUS.PENDING);
     };
 
     useFocusEffect(
@@ -54,8 +56,8 @@ export default function RequestScreen() {
 
     // Effect for data fetching - only triggered by explicit actions
     useEffect(() => {
-        // Initial data load only
-        fetchCleaningTasks(null, STATUS.PENDING);
+        // Initial data load only - fetch for current date to get latest requests
+        fetchCleaningTasks(new Date(), STATUS.PENDING);
     }, []); // Empty dependency array - only run once on mount
 
     const handleRefresh = () => {

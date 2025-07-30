@@ -13,12 +13,16 @@ const DAYS_TO_LOAD = 30; // Tải dữ liệu cho 30 ngày để hiển thị ch
 
 export default function HomeScreen() {
     const navigation = useNavigation();
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    const [selectedMonth, setSelectedMonth] = useState(new Date());
+    // Initialize with today's date, will be updated by persisted date if available
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [selectedDate, setSelectedDate] = useState(today);
+    const [selectedMonth, setSelectedMonth] = useState(new Date(today));
     const [calendarDays, setCalendarDays] = useState([]);
     const [months, setMonths] = useState([]);
     const [calendarExpanded, setCalendarExpanded] = useState(false);
     const [allTasks, setAllTasks] = useState([]);
+    const [tasksForSelectedDate, setTasksForSelectedDate] = useState([]);
     const [dataLoaded, setDataLoaded] = useState(false);
     const scrollViewRef = useRef(null);
     const currentVisibleDateRef = useRef(new Date());
@@ -46,12 +50,38 @@ export default function HomeScreen() {
                 const savedDateStr = await AsyncStorage.getItem(SELECTED_DATE_KEY);
                 if (savedDateStr) {
                     const savedDate = new Date(savedDateStr);
-                    setSelectedDate(savedDate);
-                    setSelectedMonth(savedDate);
-                    currentVisibleDateRef.current = savedDate;
+                    // Check if saved date is valid and not too old (more than 30 days)
+                    const today = new Date();
+                    const daysDiff = Math.abs(today - savedDate) / (1000 * 60 * 60 * 24);
+                    
+                    if (!isNaN(savedDate.getTime()) && daysDiff <= 30) {
+                        setSelectedDate(savedDate);
+                        setSelectedMonth(savedDate);
+                        currentVisibleDateRef.current = savedDate;
+                        console.log('[HomeScreen] Loaded persisted date:', savedDate.toDateString());
+                    } else {
+                        // Use today's date if saved date is invalid or too old
+                        console.log('[HomeScreen] Saved date is invalid or too old, using today');
+                        const todayDate = new Date();
+                        setSelectedDate(todayDate);
+                        setSelectedMonth(todayDate);
+                        currentVisibleDateRef.current = todayDate;
+                    }
+                } else {
+                    // No saved date, use today
+                    console.log('[HomeScreen] No saved date, using today');
+                    const todayDate = new Date();
+                    setSelectedDate(todayDate);
+                    setSelectedMonth(todayDate);
+                    currentVisibleDateRef.current = todayDate;
                 }
             } catch (error) {
                 console.error('Error loading persisted date:', error);
+                // Fallback to today's date
+                const todayDate = new Date();
+                setSelectedDate(todayDate);
+                setSelectedMonth(todayDate);
+                currentVisibleDateRef.current = todayDate;
             }
         };
         loadPersistedDate();
@@ -93,6 +123,15 @@ export default function HomeScreen() {
         }
     }, [cleaningTasks, getAllTasksGroupedByDate, dataLoaded]);
 
+    // Update tasks for selected date whenever selectedDate or cleaningTasks changes
+    useEffect(() => {
+        if (isMounted.current && selectedDate) {
+            const tasksForDate = getTasksForDate(selectedDate);
+            setTasksForSelectedDate(tasksForDate);
+            console.log(`[HomeScreen] Selected date tasks updated: ${tasksForDate.length} tasks for ${selectedDate.toDateString()}`);
+        }
+    }, [selectedDate, cleaningTasks, getTasksForDate]);
+
     // Update calendar UI when tasks or dates change
     useEffect(() => {
         if (isMounted.current) {
@@ -118,45 +157,7 @@ export default function HomeScreen() {
         }, [fetchAllCleaningTasks, dataLoaded, fetching])
     );
 
-    // Handle scroll events to update the selected date based on visible tasks
-    const handleScroll = useCallback((event) => {
-        if (!allTasks || allTasks.length === 0) return;
-        
-        const offsetY = event.nativeEvent.contentOffset.y;
-        const visibleHeight = event.nativeEvent.layoutMeasurement.height;
-        
-        // Estimate which date section is currently visible based on scroll position
-        // This is an approximation since we don't have direct access to element positions
-        const approximateHeaderHeight = 50;
-        const approximateTaskHeight = 200;
-        
-        let currentPosition = 0;
-        let visibleDateIndex = 0;
-        
-        // Find which date group is currently visible based on scroll position
-        for (let i = 0; i < allTasks.length; i++) {
-            const sectionHeight = approximateHeaderHeight + (allTasks[i].tasks.length * approximateTaskHeight);
-            
-            // If the middle of the visible area is within this section
-            if (offsetY + (visibleHeight / 2) >= currentPosition && 
-                offsetY + (visibleHeight / 2) < currentPosition + sectionHeight) {
-                visibleDateIndex = i;
-                break;
-            }
-            
-            currentPosition += sectionHeight;
-        }
-        
-        // Get the date of the visible section
-        const visibleDate = new Date(allTasks[visibleDateIndex].date);
-        
-        // Only update if the date has changed
-        if (!isSameDay(visibleDate, currentVisibleDateRef.current)) {
-            currentVisibleDateRef.current = visibleDate;
-            setSelectedDate(visibleDate);
-            console.log(`[HomeScreen] Scroll updated selected date to: ${visibleDate.toDateString()}`);
-        }
-    }, [allTasks]);
+    // Scroll handling removed - we now show tasks for selected date only
 
     // Generate calendar days for week view
     const generateCalendarDays = useCallback((centerDate = new Date()) => {
@@ -262,9 +263,6 @@ export default function HomeScreen() {
         // Update selected date
         setSelectedDate(newSelectedDate);
         currentVisibleDateRef.current = newSelectedDate;
-        
-        // Scroll to the selected date's tasks
-        scrollToDate(newSelectedDate);
 
         // Update the selected month if the date is in a different month
         if (newSelectedDate.getMonth() !== selectedMonth.getMonth() ||
@@ -273,30 +271,6 @@ export default function HomeScreen() {
         }
     };
     
-    // Scroll to tasks for a specific date
-    const scrollToDate = (date) => {
-        // Find the index of the date group in allTasks
-        const dateStr = date.toDateString();
-        const dateIndex = allTasks.findIndex(group => 
-            new Date(group.date).toDateString() === dateStr
-        );
-        
-        if (dateIndex >= 0 && scrollViewRef.current) {
-            // Calculate approximate scroll position based on date index
-            // This is an estimation - each date section height can vary
-            const approximateHeaderHeight = 50;
-            const approximateTaskHeight = 200;
-            
-            let scrollPosition = 0;
-            for (let i = 0; i < dateIndex; i++) {
-                scrollPosition += approximateHeaderHeight + (allTasks[i].tasks.length * approximateTaskHeight);
-            }
-            
-            // Scroll to the calculated position
-            scrollViewRef.current.scrollTo({ y: scrollPosition, animated: true });
-            console.log(`[HomeScreen] Scrolling to date: ${dateStr} at position ~${scrollPosition}`);
-        }
-    };
 
     // Handle month selection
     const handleMonthSelect = (monthIndex) => {
@@ -348,6 +322,21 @@ export default function HomeScreen() {
         fetchAllCleaningTasks().then(() => {
             setDataLoaded(true);
         });
+    };
+
+    // Function to clear old saved date (for debugging purposes)
+    const clearSavedDate = async () => {
+        try {
+            await AsyncStorage.removeItem(SELECTED_DATE_KEY);
+            console.log('[HomeScreen] Cleared saved date');
+            // Reset to today's date
+            const todayDate = new Date();
+            setSelectedDate(todayDate);
+            setSelectedMonth(todayDate);
+            currentVisibleDateRef.current = todayDate;
+        } catch (error) {
+            console.error('Error clearing saved date:', error);
+        }
     };
 
     // Handle task press
@@ -481,7 +470,7 @@ export default function HomeScreen() {
         }
 
         // Get guest name
-        const guestName = task.reservationDetails?.guest?.name || 'Paula Minorelli';
+        const guestName = task.reservationDetails?.guest?.name || 'Unknown Guest';
 
         return (
             <TouchableOpacity key={_id} onPress={() => handleTaskPress(task)}>
@@ -592,10 +581,15 @@ export default function HomeScreen() {
                         <Text style={styles.retryButtonText}>Retry</Text>
                     </TouchableOpacity>
                 </View>
-            ) : allTasks.length === 0 ? (
+            ) : tasksForSelectedDate.length === 0 ? (
                 <View style={styles.centeredContent}>
                     <Ionicons name="calendar-outline" size={64} color="#CCCCCC" />
-                    <Text style={styles.noTasksText}>No cleaning requests found</Text>
+                    <Text style={styles.noTasksText}>No cleaning requests for {selectedDate.toDateString()}</Text>
+                    {allTasks.length > 0 && (
+                        <Text style={styles.helperText}>
+                            {`${allTasks.length} task groups available on other dates`}
+                        </Text>
+                    )}
                     {dataLoaded ? null : (
                         <TouchableOpacity
                             style={styles.retryButton}
@@ -611,15 +605,10 @@ export default function HomeScreen() {
                     style={styles.taskListContainer}
                     contentContainerStyle={styles.taskListContent}
                     showsVerticalScrollIndicator={true}
-                    onScroll={handleScroll}
                     scrollEventThrottle={16}
                 >
-                    {allTasks.map(dateGroup => (
-                        <React.Fragment key={dateGroup.date}>
-                            {renderDateHeader(dateGroup.date)}
-                            {dateGroup.tasks.map(task => renderTask(task))}
-                        </React.Fragment>
-                    ))}
+                    {renderDateHeader(selectedDate)}
+                    {tasksForSelectedDate.map(task => renderTask(task))}
                 </ScrollView>
             )}
         </View>
@@ -820,5 +809,11 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: '#333333',
+    },
+    helperText: {
+        marginTop: 10,
+        fontSize: 14,
+        color: '#666',
+        textAlign: 'center',
     },
 }); 
