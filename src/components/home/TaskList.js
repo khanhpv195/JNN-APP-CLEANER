@@ -1,276 +1,578 @@
-import React, { useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { STATUS } from '../../constants/status';
+import React, { memo, useCallback, useRef } from 'react';
+import { 
+    View, 
+    Text, 
+    ScrollView, 
+    TouchableOpacity, 
+    StyleSheet, 
+    ActivityIndicator,
+    RefreshControl,
+    Animated,
+    Dimensions
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import SafeLinearGradient from '../common/SafeLinearGradient';
+import TaskCard from './TaskCard';
+import { hapticFeedback } from '../../utils/haptics';
 
-const TaskList = ({ 
-    tasks, 
-    onTaskPress, 
-    onRefresh, 
-    loading, 
-    onEndReached,
-    onEndReachedThreshold,
-    ListFooterComponent,
-    style,
-    scrollEnabled = true,
-    showsVerticalScrollIndicator = true
-}) => {
-    // Add state to prevent multiple onEndReached calls
-    const [onEndReachedCalledDuringMomentum, setOnEndReachedCalledDuringMomentum] = useState(false);
+const { width } = Dimensions.get('window');
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case STATUS.PENDING:
-                return '#FFA000'; // Orange
-            case STATUS.IN_PROGRESS:
-                return '#1976D2'; // Blue
-            case STATUS.COMPLETED:
-                return '#4CAF50'; // Green
-            default:
-                return '#666'; // Gray
-        }
-    };
+const LoadingSkeleton = memo(() => {
+    const animatedValue = useRef(new Animated.Value(0)).current;
 
-    const formatCheckoutDateTime = (dateString) => {
-        if (!dateString) {
-            return {
-                date: 'Not scheduled',
-                time: 'To be determined'
-            };
-        }
-
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) {
-            return {
-                date: 'Invalid date',
-                time: 'Invalid time'
-            };
-        }
-
-        return {
-            date: date.toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-            }),
-            time: date.toLocaleString('en-US', {
-                hour: 'numeric',
-                minute: 'numeric',
-                hour12: true
-            })
-        };
-    };
-
-    const renderTask = ({ item }) => {
-        const {
-            _id,
-            status,
-            propertyId,
-            checkOutDate,
-            checkInDate,
-            price = { amount: 0, currency: 'USD' },
-            urgency = 'MEDIUM',
-            reservationId = ''
-        } = item;
-
-        // Format dates with better error handling
-        const checkout = formatCheckoutDateTime(checkOutDate);
-        const checkin = formatCheckoutDateTime(checkInDate);
-
-        // Get property details from propertyId
-        const propertyName = propertyId?.name || 'Unknown Property';
-        const address = propertyId?.address || {};
-
-        // Format address properly
-        let formattedAddress = 'No address available';
-        if (address) {
-            if (typeof address === 'string') {
-                formattedAddress = address;
-            } else if (address.display) {
-                formattedAddress = address.display;
-            } else if (address.street) {
-                formattedAddress = `${address.street}, ${address.city || ''}, ${address.state || ''} ${address.postcode || ''}`;
-            }
-        }
-
-        // Format price
-        const priceAmount = price?.amount || 0;
-        const formattedPrice = (priceAmount / 100).toLocaleString('en-US', {
-            style: 'currency',
-            currency: price?.currency || 'USD',
-            minimumFractionDigits: 2
-        });
-
-        // Access code from property
-        const accessCode = propertyId?.access_code || 'N/A';
-
-        // Urgency color
-        const getUrgencyColor = (urgencyLevel) => {
-            switch (urgencyLevel) {
-                case 'HIGH': return '#ff5252';
-                case 'MEDIUM': return '#ffa726';
-                case 'LOW': return '#66bb6a';
-                default: return '#ffa726';
-            }
-        };
-
-        return (
-            <TouchableOpacity
-                style={[
-                    styles.taskCard,
-                    { borderLeftWidth: 4, borderLeftColor: getStatusColor(status) }
-                ]}
-                onPress={() => onTaskPress(item)}
-            >
-                {/* Header with title and badges */}
-                <View style={styles.cardHeader}>
-                    <Text style={styles.propertyTitle} numberOfLines={2}>
-                        {propertyName}
-                    </Text>
-                    <View style={styles.badgeContainer}>
-                        <View style={[styles.urgencyBadge, { backgroundColor: getUrgencyColor(urgency) }]}>
-                            <Text style={styles.badgeText}>{urgency}</Text>
-                        </View>
-                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(status) }]}>
-                            <Text style={styles.badgeText}>{status.replace('_', ' ')}</Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Address */}
-                <Text style={styles.addressText} numberOfLines={2}>
-                    {formattedAddress}
-                </Text>
-
-                {/* Time Information */}
-                <View style={styles.timeSection}>
-                    <View style={styles.timeRow}>
-                        <Text style={styles.timeLabel}>Check-in:</Text>
-                        <Text style={styles.timeValue}>
-                            {checkin.date} • {checkin.time}
-                        </Text>
-                    </View>
-                    <View style={styles.timeRow}>
-                        <Text style={styles.timeLabel}>Check-out:</Text>
-                        <Text style={styles.timeValue}>
-                            {checkout.date} • {checkout.time}
-                        </Text>
-                    </View>
-                </View>
-
-             
-            </TouchableOpacity>
+    React.useEffect(() => {
+        const animation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(animatedValue, {
+                    toValue: 1,
+                    duration: 1000,
+                    useNativeDriver: false,
+                }),
+                Animated.timing(animatedValue, {
+                    toValue: 0,
+                    duration: 1000,
+                    useNativeDriver: false,
+                }),
+            ])
         );
-    };
+        animation.start();
+        return () => animation.stop();
+    }, [animatedValue]);
 
-    // Handle end reached with debounce
-    const handleEndReached = () => {
-        if (!onEndReachedCalledDuringMomentum && onEndReached) {
-            onEndReached();
-            setOnEndReachedCalledDuringMomentum(true);
-        }
-    };
+    const opacity = animatedValue.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.3, 0.7],
+    });
 
     return (
-        <FlatList
-            data={tasks}
-            keyExtractor={(item) => item.id || item._id}
-            renderItem={renderTask}
-            contentContainerStyle={[styles.taskList, style]}
-            refreshing={loading}
-            onRefresh={onRefresh}
-            onEndReached={handleEndReached}
-            onEndReachedThreshold={onEndReachedThreshold || 0.5}
-            onMomentumScrollBegin={() => setOnEndReachedCalledDuringMomentum(false)}
-            ListFooterComponent={ListFooterComponent}
-            scrollEnabled={scrollEnabled}
-            showsVerticalScrollIndicator={showsVerticalScrollIndicator}
-        />
+        <View style={styles.skeletonContainer}>
+            {[1, 2, 3].map((index) => (
+                <Animated.View 
+                    key={index} 
+                    style={[styles.skeletonCard, { opacity }]}
+                >
+                    <View style={styles.skeletonHeader} />
+                    <View style={styles.skeletonText} />
+                    <View style={styles.skeletonTextSmall} />
+                    <View style={styles.skeletonFooter}>
+                        <View style={styles.skeletonButton} />
+                        <View style={styles.skeletonButton} />
+                    </View>
+                </Animated.View>
+            ))}
+        </View>
     );
-};
+});
+
+const EmptyState = memo(({ 
+    selectedDate, 
+    allTasksCount, 
+    onGoToToday,
+    icon = "calendar-outline",
+    title,
+    subtitle 
+}) => {
+    const formatDate = useCallback(() => {
+        return selectedDate.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            month: 'long', 
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }, [selectedDate]);
+
+    return (
+        <View style={styles.emptyContainer}>
+            <SafeLinearGradient
+                colors={['#F8F9FA', '#FFFFFF']}
+                style={styles.emptyGradient}
+            >
+                <View style={styles.emptyIconContainer}>
+                    <Ionicons name={icon} size={64} color="#E0E0E0" />
+                </View>
+                
+                <Text style={styles.emptyTitle}>
+                    {title || 'No tasks scheduled'}
+                </Text>
+                
+                <Text style={styles.emptySubtitle}>
+                    {subtitle || `No cleaning tasks for ${formatDate()}`}
+                </Text>
+                
+                {allTasksCount > 0 && (
+                    <Text style={styles.helperText}>
+                        {allTasksCount} task groups available on other dates
+                    </Text>
+                )}
+
+                <TouchableOpacity
+                    style={styles.goToTodayButton}
+                    onPress={() => {
+                        hapticFeedback.medium();
+                        onGoToToday();
+                    }}
+                    activeOpacity={0.7}
+                >
+                    <SafeLinearGradient
+                        colors={['#00BFA6', '#00ACC1']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.buttonGradient}
+                    >
+                        <Ionicons name="today-outline" size={20} color="#FFFFFF" />
+                        <Text style={styles.goToTodayText}>Go to Today</Text>
+                    </SafeLinearGradient>
+                </TouchableOpacity>
+            </SafeLinearGradient>
+        </View>
+    );
+});
+
+const ErrorState = memo(({ error, onRetry }) => (
+    <View style={styles.errorContainer}>
+        <SafeLinearGradient
+            colors={['#FFEBEE', '#FFFFFF']}
+            style={styles.errorGradient}
+        >
+            <View style={styles.errorIconContainer}>
+                <Ionicons name="alert-circle-outline" size={64} color="#F44336" />
+            </View>
+            
+            <Text style={styles.errorTitle}>Something went wrong</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            
+            <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => {
+                    hapticFeedback.warning();
+                    onRetry();
+                }}
+                activeOpacity={0.7}
+            >
+                <SafeLinearGradient
+                    colors={['#F44336', '#D32F2F']}
+                    style={styles.buttonGradient}
+                >
+                    <Ionicons name="refresh-outline" size={20} color="#FFFFFF" />
+                    <Text style={styles.retryText}>Try Again</Text>
+                </SafeLinearGradient>
+            </TouchableOpacity>
+        </SafeLinearGradient>
+    </View>
+));
+
+const TaskList = memo(({
+    tasks = [],
+    selectedDate,
+    allTasksCount = 0,
+    loading = false,
+    error = null,
+    refreshing = false,
+    nextDateWithTasks = null,
+    onTaskPress,
+    onBookingInfoPress,
+    onRefresh,
+    onGoToToday,
+    onScrollEndReached,
+    isAutoAdvancing = false
+}) => {
+    const scrollViewRef = useRef(null);
+    
+    const handleScroll = useCallback((event) => {
+        const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+        const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 100;
+        
+        if (isCloseToBottom && !isAutoAdvancing && tasks.length > 0) {
+            onScrollEndReached?.();
+        }
+    }, [isAutoAdvancing, tasks.length, onScrollEndReached]);
+
+    const renderDateHeader = useCallback(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const dateObj = new Date(selectedDate);
+        const isToday = dateObj.toDateString() === today.toDateString();
+        
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+        const isTomorrow = dateObj.toDateString() === tomorrow.toDateString();
+        
+        let dateLabel = '';
+        if (isToday) dateLabel = 'Today';
+        else if (isTomorrow) dateLabel = 'Tomorrow';
+        
+        return (
+            <View style={styles.dateHeader}>
+                <SafeLinearGradient
+                    colors={['#00BFA6', '#00ACC1']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.dateHeaderGradient}
+                >
+                    <Text style={styles.dateHeaderText}>
+                        {dateLabel && `${dateLabel} • `}
+                        {selectedDate.toLocaleDateString('en-US', { 
+                            weekday: 'short',
+                            month: 'short', 
+                            day: 'numeric',
+                            year: 'numeric' 
+                        })}
+                    </Text>
+                    <View style={styles.taskCount}>
+                        <Text style={styles.taskCountText}>{tasks.length}</Text>
+                    </View>
+                </SafeLinearGradient>
+            </View>
+        );
+    }, [selectedDate, tasks.length]);
+
+    const renderNextDateHint = useCallback(() => {
+        if (!nextDateWithTasks || isAutoAdvancing) return null;
+
+        return (
+            <View style={styles.nextDateHint}>
+                <View style={styles.hintContent}>
+                    <Ionicons name="arrow-down" size={16} color="#00BFA6" />
+                    <Text style={styles.nextDateHintText}>
+                        Scroll down to see tasks for{' '}
+                        {nextDateWithTasks.toLocaleDateString('en-US', { 
+                            weekday: 'short', 
+                            month: 'short', 
+                            day: 'numeric' 
+                        })}
+                    </Text>
+                </View>
+            </View>
+        );
+    }, [nextDateWithTasks, isAutoAdvancing]);
+
+    if (loading && tasks.length === 0) {
+        return <LoadingSkeleton />;
+    }
+
+    if (error) {
+        return <ErrorState error={error} onRetry={onRefresh} />;
+    }
+
+    if (tasks.length === 0) {
+        return (
+            <EmptyState
+                selectedDate={selectedDate}
+                allTasksCount={allTasksCount}
+                onGoToToday={onGoToToday}
+            />
+        );
+    }
+
+    return (
+        <View style={styles.container}>
+            {isAutoAdvancing && (
+                <View style={styles.autoAdvanceIndicator}>
+                    <ActivityIndicator size="small" color="#00BFA6" />
+                    <Text style={styles.autoAdvanceText}>Moving to next date...</Text>
+                </View>
+            )}
+
+            <ScrollView
+                ref={scrollViewRef}
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={['#00BFA6']}
+                        tintColor="#00BFA6"
+                        title="Pull to refresh"
+                        titleColor="#666"
+                    />
+                }
+                onMomentumScrollEnd={handleScroll}
+                scrollEventThrottle={16}
+            >
+                {renderDateHeader()}
+                
+                {tasks.map((task, index) => (
+                    <TaskCard
+                        key={task._id || index}
+                        task={task}
+                        onPress={onTaskPress}
+                        onBookingInfoPress={onBookingInfoPress}
+                        style={[
+                            index === 0 && styles.firstCard,
+                            index === tasks.length - 1 && styles.lastCard
+                        ]}
+                    />
+                ))}
+
+                {renderNextDateHint()}
+            </ScrollView>
+        </View>
+    );
+});
 
 const styles = StyleSheet.create({
-    taskList: {
+    container: {
+        flex: 1,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: 20,
+    },
+    
+    // Loading Skeleton
+    skeletonContainer: {
+        flex: 1,
         paddingHorizontal: 16,
-        paddingBottom: 16,
     },
-    taskCard: {
-        backgroundColor: '#ffffff',
-        borderRadius: 12,
-        padding: 16,
+    skeletonCard: {
+        backgroundColor: '#F0F0F0',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 16,
+    },
+    skeletonHeader: {
+        height: 20,
+        backgroundColor: '#E0E0E0',
+        borderRadius: 4,
         marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-        borderLeftWidth: 4,
+        width: '70%',
     },
-    cardHeader: {
+    skeletonText: {
+        height: 16,
+        backgroundColor: '#E0E0E0',
+        borderRadius: 4,
+        marginBottom: 8,
+        width: '90%',
+    },
+    skeletonTextSmall: {
+        height: 14,
+        backgroundColor: '#E0E0E0',
+        borderRadius: 4,
+        marginBottom: 16,
+        width: '60%',
+    },
+    skeletonFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 8,
     },
-    propertyTitle: {
-        fontSize: 18,
+    skeletonButton: {
+        height: 32,
+        backgroundColor: '#E0E0E0',
+        borderRadius: 16,
+        width: '45%',
+    },
+
+    // Empty State
+    emptyContainer: {
+        flex: 1,
+        margin: 16,
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
+    emptyGradient: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 32,
+    },
+    emptyIconContainer: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: 'rgba(224, 224, 224, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    emptyTitle: {
+        fontSize: 20,
         fontWeight: 'bold',
         color: '#333',
-        flex: 1,
-        marginRight: 12,
-        lineHeight: 22,
+        textAlign: 'center',
+        marginBottom: 8,
     },
-    badgeContainer: {
-        flexDirection: 'row',
-        gap: 6,
-        flexShrink: 0,
-    },
-    urgencyBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    statusBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    badgeText: {
-        color: 'white',
-        fontSize: 11,
-        fontWeight: '600',
-        textTransform: 'uppercase',
-    },
-    addressText: {
-        fontSize: 14,
+    emptySubtitle: {
+        fontSize: 16,
         color: '#666',
-        marginBottom: 16,
-        lineHeight: 18,
-    },
-    timeSection: {
+        textAlign: 'center',
+        lineHeight: 24,
         marginBottom: 16,
     },
-    timeRow: {
+    helperText: {
+        fontSize: 14,
+        color: '#999',
+        textAlign: 'center',
+        marginBottom: 24,
+    },
+
+    // Error State
+    errorContainer: {
+        flex: 1,
+        margin: 16,
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
+    errorGradient: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 32,
+    },
+    errorIconContainer: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: 'rgba(244, 67, 54, 0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    errorTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333',
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    errorText: {
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
+        lineHeight: 24,
+        marginBottom: 24,
+    },
+
+    // Buttons
+    goToTodayButton: {
+        borderRadius: 12,
+        overflow: 'hidden',
+        shadowColor: '#00BFA6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    retryButton: {
+        borderRadius: 12,
+        overflow: 'hidden',
+        shadowColor: '#F44336',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    buttonGradient: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
+        justifyContent: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 14,
     },
-    timeLabel: {
+    goToTodayText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+        marginLeft: 8,
+    },
+    retryText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+        marginLeft: 8,
+    },
+
+    // Date Header
+    dateHeader: {
+        marginBottom: 16,
+        borderRadius: 12,
+        overflow: 'hidden',
+        shadowColor: '#00BFA6',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    dateHeaderGradient: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+    },
+    dateHeaderText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+        flex: 1,
+    },
+    taskCount: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        minWidth: 24,
+        alignItems: 'center',
+    },
+    taskCountText: {
+        color: '#FFFFFF',
         fontSize: 14,
-        color: '#666',
-        width: 50,
+        fontWeight: 'bold',
     },
-    timeValue: {
+
+    // Auto Advance
+    autoAdvanceIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#E8F5E8',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginBottom: 16,
+        borderRadius: 12,
+        borderLeftWidth: 4,
+        borderLeftColor: '#4CAF50',
+    },
+    autoAdvanceText: {
+        color: '#4CAF50',
         fontSize: 14,
-        color: '#333',
-        fontWeight: '500',
+        fontWeight: '600',
+        marginLeft: 8,
     },
-    codeSection: {
-        alignItems: 'flex-end',
+
+    // Next Date Hint
+    nextDateHint: {
+        marginTop: 16,
+        padding: 16,
+        borderRadius: 12,
+        backgroundColor: '#F8F9FA',
+        borderWidth: 1,
+        borderColor: '#E9ECEF',
+        borderStyle: 'dashed',
     },
-    codeText: {
-        fontSize: 12,
+    hintContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    nextDateHintText: {
         color: '#666',
-        fontFamily: 'monospace',
+        fontSize: 14,
+        textAlign: 'center',
+        fontStyle: 'italic',
+        marginLeft: 8,
+    },
+
+    // Card spacing
+    firstCard: {
+        marginTop: 0,
+    },
+    lastCard: {
+        marginBottom: 8,
     },
 });
 

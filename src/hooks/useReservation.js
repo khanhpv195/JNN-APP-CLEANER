@@ -337,16 +337,32 @@ export const useReservation = () => {
         const compareDate = new Date(date);
         compareDate.setHours(0, 0, 0, 0);
         
-        return cleaningTasks.filter(task => {
+        console.log(`[getTasksForDate] Filtering tasks for date: ${compareDate.toDateString()}`);
+        console.log(`[getTasksForDate] Total cleaning tasks: ${cleaningTasks.length}`);
+        
+        const filteredTasks = cleaningTasks.filter(task => {
             // Skip pending tasks if needed
             if (task.status === STATUS.PENDING) return false;
             
             // Get the task date from checkOutDate or reservationDetails.checkOut
-            const taskDate = new Date(task.checkOutDate || task.reservationDetails?.checkOut);
+            const taskDateStr = task.checkOutDate || task.reservationDetails?.checkOut;
+            if (!taskDateStr) {
+                console.log(`[getTasksForDate] Task ${task._id} has no checkout date`);
+                return false;
+            }
+            
+            const taskDate = new Date(taskDateStr);
             taskDate.setHours(0, 0, 0, 0);
             
-            return taskDate.toDateString() === compareDate.toDateString();
+            const matches = taskDate.toDateString() === compareDate.toDateString();
+            
+            console.log(`[getTasksForDate] Task ${task._id}: taskDate=${taskDate.toDateString()}, compareDate=${compareDate.toDateString()}, matches=${matches}`);
+            
+            return matches;
         });
+        
+        console.log(`[getTasksForDate] Found ${filteredTasks.length} tasks for ${compareDate.toDateString()}`);
+        return filteredTasks;
     }, [cleaningTasks]);
 
     /**

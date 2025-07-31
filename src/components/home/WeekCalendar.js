@@ -56,12 +56,24 @@ const WeekCalendar = ({ calendarDays, selectedDate, onDateSelect }) => {
                     <Ionicons name="chevron-back" size={24} color="#00BFA6" />
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.todayButton}
-                    onPress={goToToday}
-                >
-                    <Text style={styles.todayButtonText}>Today</Text>
-                </TouchableOpacity>
+                <View style={styles.selectedDateDisplay}>
+                    <Text style={styles.selectedDateHeaderText}>
+                        {selectedDate.toLocaleDateString('en-US', { 
+                            weekday: 'short', 
+                            month: 'short', 
+                            day: 'numeric'
+                        })}
+                    </Text>
+                    <Text style={styles.selectedDateSubheader}>
+                        {selectedDate.getFullYear()}
+                    </Text>
+                    <TouchableOpacity
+                        style={styles.todayButton}
+                        onPress={goToToday}
+                    >
+                        <Text style={styles.todayButtonText}>Today</Text>
+                    </TouchableOpacity>
+                </View>
 
                 <TouchableOpacity
                     style={styles.navigationButton}
@@ -158,6 +170,19 @@ const styles = StyleSheet.create({
     navigationButton: {
         padding: 5,
     },
+    selectedDateDisplay: {
+        alignItems: 'center',
+    },
+    selectedDateHeaderText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    selectedDateSubheader: {
+        fontSize: 12,
+        color: '#666',
+        marginBottom: 4,
+    },
     todayButton: {
         backgroundColor: '#F0F8FF',
         paddingHorizontal: 12,
@@ -167,7 +192,7 @@ const styles = StyleSheet.create({
     todayButtonText: {
         color: '#00BFA6',
         fontWeight: '600',
-        fontSize: 14,
+        fontSize: 12,
     },
     daysContainer: {
         paddingHorizontal: 10,
@@ -181,7 +206,9 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     selectedDayItem: {
-        // No background color here, we'll use the circle for selection
+        backgroundColor: 'rgba(0, 191, 166, 0.1)',
+        borderRadius: 8,
+        paddingVertical: 4,
     },
     dayText: {
         fontSize: 12,
@@ -190,7 +217,7 @@ const styles = StyleSheet.create({
     },
     selectedDayText: {
         color: '#00BFA6',
-        fontWeight: '600',
+        fontWeight: '700',
     },
     todayText: {
         fontWeight: '600',
@@ -207,6 +234,11 @@ const styles = StyleSheet.create({
     },
     selectedDateCircle: {
         backgroundColor: '#00BFA6',
+        shadowColor: '#00BFA6',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4,
     },
     todayCircle: {
         borderWidth: 1,
