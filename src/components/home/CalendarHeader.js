@@ -13,22 +13,12 @@ const CalendarHeader = memo(({
     onNextYear,
     isLoading = false
 }) => {
+    // Always show today's date in header for timeline view
+    const today = new Date();
+    const displayDate = today; // Use today instead of selectedDate
+    
     const formatSelectedDate = () => {
-        const today = new Date();
-        const isToday = selectedDate.toDateString() === today.toDateString();
-        
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
-        const isTomorrow = selectedDate.toDateString() === tomorrow.toDateString();
-
-        if (isToday) return "Today";
-        if (isTomorrow) return "Tomorrow";
-        
-        return selectedDate.toLocaleDateString('en-US', { 
-            weekday: 'short', 
-            month: 'short', 
-            day: 'numeric' 
-        });
+        return "Today"; // Always show "Today" in timeline view
     };
 
     return (
@@ -41,10 +31,10 @@ const CalendarHeader = memo(({
             >
                 <View style={styles.content}>
                     <View style={styles.dateSection}>
-                        <Text style={styles.selectedDateLabel}>Selected Date</Text>
+                        <Text style={styles.selectedDateLabel}>Timeline View</Text>
                         <Text style={styles.selectedDate}>{formatSelectedDate()}</Text>
                         <Text style={styles.fullDate}>
-                            {selectedDate.toLocaleDateString('en-US', { 
+                            {displayDate.toLocaleDateString('en-US', { 
                                 weekday: 'long',
                                 month: 'long', 
                                 day: 'numeric',

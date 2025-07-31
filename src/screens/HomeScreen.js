@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useMemo } from 'react';
 import MonthCalendar from '../components/home/MonthCalendar';
 import WeekCalendar from '../components/home/WeekCalendar';
 import CalendarHeader from '../components/home/CalendarHeader';
-import TaskList from '../components/home/TaskList';
+import TimelineTaskList from '../components/home/TimelineTaskList';
 import { useReservation } from '../hooks/useReservation';
 import { useCalendar } from '../hooks/useCalendar';
 
@@ -12,7 +12,6 @@ export default function HomeScreen() {
     const navigation = useNavigation();
     const [calendarExpanded, setCalendarExpanded] = useState(false);
     const [dataLoaded, setDataLoaded] = useState(false);
-    const [isAutoAdvancing, setIsAutoAdvancing] = useState(false);
     
     const { 
         cleaningTasks, 
@@ -21,7 +20,6 @@ export default function HomeScreen() {
         fetchAllCleaningTasks,
         clearTaskCache,
         fetching,
-        getTasksForDate,
         getAllTasksGroupedByDate
     } = useReservation();
     
@@ -34,18 +32,62 @@ export default function HomeScreen() {
         selectDate,
         selectMonth,
         navigateYear,
-        goToToday,
-        findNextDateWithTasks
+        goToToday
     } = useCalendar(cleaningTasks);
 
-    // Memoized data
-    const tasksForSelectedDate = useMemo(() => {
-        return getTasksForDate(selectedDate);
-    }, [selectedDate, getTasksForDate]);
+    // Helper function to create timeline data - only from today onwards
+    const createTimelineData = useCallback(() => {
+        const tasksGrouped = getAllTasksGroupedByDate();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
 
-    const allTasksGrouped = useMemo(() => {
-        return getAllTasksGroupedByDate();
+        // Filter and group tasks by date - only today and future dates
+        const futureGroups = tasksGrouped
+            .map(group => {
+                const groupDate = new Date(group.date);
+                groupDate.setHours(0, 0, 0, 0);
+                
+                return {
+                    date: group.date,
+                    tasks: group.tasks,
+                    isToday: groupDate.getTime() === today.getTime(),
+                    isTomorrow: groupDate.getTime() === tomorrow.getTime(),
+                    dateObj: groupDate
+                };
+            })
+            .filter(group => group.dateObj >= today); // Only today and future
+
+        // Always include TODAY even if no tasks
+        const todayExists = futureGroups.some(group => group.isToday);
+        if (!todayExists) {
+            futureGroups.unshift({
+                date: today.toISOString(),
+                tasks: [],
+                isToday: true,
+                isTomorrow: false,
+                dateObj: today
+            });
+        }
+
+        // Sort: Today first, Tomorrow second, then chronologically
+        const sortedGroups = futureGroups.sort((a, b) => {
+            if (a.isToday) return -1;
+            if (b.isToday) return 1;
+            if (a.isTomorrow) return -1;
+            if (b.isTomorrow) return 1;
+            return a.dateObj - b.dateObj;
+        });
+
+        return sortedGroups;
     }, [getAllTasksGroupedByDate]);
+
+    // Memoized data
+    const timelineData = useMemo(() => {
+        return createTimelineData();
+    }, [createTimelineData]);
 
     const calendarDays = useMemo(() => {
         return generateWeekDays(selectedDate);
@@ -54,10 +96,6 @@ export default function HomeScreen() {
     const monthData = useMemo(() => {
         return generateMonthDays(selectedMonth);
     }, [generateMonthDays, selectedMonth]);
-
-    const nextDateWithTasks = useMemo(() => {
-        return findNextDateWithTasks(selectedDate);
-    }, [findNextDateWithTasks, selectedDate]);
 
     // Initialize calendar data on mount
     useEffect(() => {
@@ -140,24 +178,10 @@ export default function HomeScreen() {
         navigateYear(1);
     }, [navigateYear]);
 
-    // Handle scroll end reached - auto advance to next date
-    const handleScrollEndReached = useCallback(() => {
-        if (isAutoAdvancing || !dataLoaded || tasksForSelectedDate.length === 0) {
-            return;
-        }
-        
-        const nextDate = nextDateWithTasks;
-        if (nextDate) {
-            setIsAutoAdvancing(true);
-            
-            setTimeout(() => {
-                selectDate(nextDate);
-                setTimeout(() => {
-                    setIsAutoAdvancing(false);
-                }, 1000);
-            }, 300);
-        }
-    }, [isAutoAdvancing, dataLoaded, tasksForSelectedDate.length, nextDateWithTasks, selectDate]);
+    // Handle refresh with haptic feedback
+    const handleRefreshWithFeedback = useCallback(() => {
+        handleRefresh();
+    }, [handleRefresh]);
 
     // Toggle calendar expanded
     const toggleCalendarExpanded = useCallback(() => {
@@ -176,13 +200,7 @@ export default function HomeScreen() {
                 isLoading={loading && !dataLoaded}
             />
 
-            <View style={styles.weekCalendarContainer}>
-                <WeekCalendar
-                    calendarDays={calendarDays}
-                    selectedDate={selectedDate}
-                    onDateSelect={handleDateSelect}
-                />
-            </View>
+            {/* WeekCalendar hidden in timeline view to avoid confusion */}
 
             {calendarExpanded && (
                 <View style={styles.monthCalendarContainer}>
@@ -196,20 +214,15 @@ export default function HomeScreen() {
                 </View>
             )}
 
-            <TaskList
-                tasks={tasksForSelectedDate}
-                selectedDate={selectedDate}
-                allTasksCount={allTasksGrouped.length}
+            <TimelineTaskList
+                timelineData={timelineData}
                 loading={loading && !dataLoaded}
                 error={error}
                 refreshing={fetching}
-                nextDateWithTasks={nextDateWithTasks}
                 onTaskPress={handleTaskPress}
                 onBookingInfoPress={handleBookingInfoPress}
-                onRefresh={handleRefresh}
+                onRefresh={handleRefreshWithFeedback}
                 onGoToToday={goToToday}
-                onScrollEndReached={handleScrollEndReached}
-                isAutoAdvancing={isAutoAdvancing}
             />
         </View>
     );
