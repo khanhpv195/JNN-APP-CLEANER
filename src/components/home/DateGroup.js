@@ -39,7 +39,7 @@ const DateGroup = memo(({
     const getHeaderColors = () => {
         if (isToday) return ['#00BFA6', '#00ACC1'];
         if (isTomorrow) return ['#FF9800', '#F57C00'];
-        return ['#8E8E93', '#6D6D70']; // More subtle gray for future dates
+        return ['#4CAF50', '#66BB6A']; // Green theme for future dates
     };
 
     const getHeaderTextColor = () => {
@@ -58,22 +58,33 @@ const DateGroup = memo(({
                         <View style={styles.dateInfo}>
                             <View style={styles.dateTitleRow}>
                                 {isToday && (
-                                    <Ionicons 
-                                        name="today" 
-                                        size={20} 
-                                        color={getHeaderTextColor()} 
-                                        style={styles.todayIcon}
-                                    />
+                                    <View style={styles.iconContainer}>
+                                        <Ionicons 
+                                            name="today" 
+                                            size={22} 
+                                            color={getHeaderTextColor()} 
+                                        />
+                                    </View>
                                 )}
                                 {isTomorrow && (
-                                    <Ionicons 
-                                        name="arrow-forward" 
-                                        size={18} 
-                                        color={getHeaderTextColor()} 
-                                        style={styles.todayIcon}
-                                    />
+                                    <View style={styles.iconContainer}>
+                                        <Ionicons 
+                                            name="arrow-forward" 
+                                            size={18} 
+                                            color={getHeaderTextColor()} 
+                                        />
+                                    </View>
                                 )}
-                                <Text style={[styles.dateTitle, { color: getHeaderTextColor() }]}>
+                                {!isToday && !isTomorrow && (
+                                    <View style={styles.iconContainer}>
+                                        <Ionicons 
+                                            name="calendar-outline" 
+                                            size={20} 
+                                            color={getHeaderTextColor()} 
+                                        />
+                                    </View>
+                                )}
+                                <Text style={[styles.dateTitle, { color: getHeaderTextColor(), fontSize: isToday ? 24 : 20 }]}>
                                     {formatDateHeader()}
                                 </Text>
                             </View>
@@ -144,12 +155,13 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.4,
         shadowRadius: 12,
         elevation: 8,
+        transform: [{ scale: 1.02 }],
         borderWidth: 2,
         borderColor: 'rgba(0, 191, 166, 0.3)',
     },
     headerGradient: {
-        paddingVertical: 20,
-        paddingHorizontal: 24,
+        paddingVertical: 18,
+        paddingHorizontal: 20,
     },
     headerContent: {
         flexDirection: 'row',
@@ -163,11 +175,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
     },
-    todayIcon: {
-        marginRight: 8,
+    iconContainer: {
+        marginRight: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 8,
+        padding: 6,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     dateTitle: {
-        fontSize: 22,
+        fontSize: 20,
         fontWeight: 'bold',
     },
     dateSubtitle: {

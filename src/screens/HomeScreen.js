@@ -2,7 +2,6 @@ import { Alert, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import MonthCalendar from '../components/home/MonthCalendar';
-import WeekCalendar from '../components/home/WeekCalendar';
 import CalendarHeader from '../components/home/CalendarHeader';
 import TimelineTaskList from '../components/home/TimelineTaskList';
 import { useReservation } from '../hooks/useReservation';
@@ -27,7 +26,6 @@ export default function HomeScreen() {
         selectedDate,
         selectedMonth,
         loadPersistedDate,
-        generateWeekDays,
         generateMonthDays,
         selectDate,
         selectMonth,
@@ -89,9 +87,6 @@ export default function HomeScreen() {
         return createTimelineData();
     }, [createTimelineData]);
 
-    const calendarDays = useMemo(() => {
-        return generateWeekDays(selectedDate);
-    }, [generateWeekDays, selectedDate]);
 
     const monthData = useMemo(() => {
         return generateMonthDays(selectedMonth);
@@ -131,20 +126,31 @@ export default function HomeScreen() {
         });
     }, [navigation]);
 
-    // Handle booking info press
+    // Handle booking info press - with better data extraction
     const handleBookingInfoPress = useCallback((task) => {
-        const propertyName = task.propertyId?.name || 'Unknown Property';
-        const guestName = task.reservationDetails?.guest?.name || 'Unknown Guest';
-        const checkIn = task.reservationDetails?.checkIn ? new Date(task.reservationDetails.checkIn).toLocaleDateString() : 'N/A';
-        const checkOut = task.reservationDetails?.checkOut ? new Date(task.reservationDetails.checkOut).toLocaleDateString() : 'N/A';
-        const guests = task.reservationDetails?.numberOfGuests || 'N/A';
-        const reservationId = task.reservationId ? task.reservationId : 'N/A';
+        // Debug: Log task structure to console
+        console.log('Task data:', JSON.stringify(task, null, 2));
         
-        Alert.alert(
-            'Booking Information',
-            `Property: ${propertyName}\nGuest: ${guestName}\nCheck-in: ${checkIn}\nCheck-out: ${checkOut}\nGuests: ${guests}\nReservation ID: ${reservationId}`,
-            [{ text: 'Close' }]
-        );
+        const propertyName = task.propertyId?.name || task.property?.name || 'Property Information';
+        const guestName = task.reservationDetails?.guest?.name || task.guest?.name || null;
+        const checkInDate = task.checkInDate || task.reservationDetails?.checkIn;
+        const checkOutDate = task.checkOutDate || task.reservationDetails?.checkOut;
+        const checkIn = checkInDate ? new Date(checkInDate).toLocaleDateString() : 'N/A';
+        const checkOut = checkOutDate ? new Date(checkOutDate).toLocaleDateString() : 'N/A';
+        const guests = task.reservationDetails?.numberOfGuests || task.numberOfGuests || 'N/A';
+        const reservationId = task.reservationId || task.id || 'N/A';
+        
+        // Build message dynamically - skip guest if no data
+        let message = `Property: ${propertyName}`;
+        if (guestName) {
+            message += `\nGuest: ${guestName}`;
+        }
+        message += `\nCheck-in: ${checkIn}`;
+        message += `\nCheck-out: ${checkOut}`;
+        message += `\nGuests: ${guests}`;
+        message += `\nReservation ID: ${reservationId}`;
+        
+        Alert.alert('Booking Information', message, [{ text: 'Close' }]);
     }, []);
 
     // Handle refresh
@@ -231,7 +237,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8F8F8',
+        backgroundColor: '#F5F7FA',
         padding: 16,
     },
     weekCalendarContainer: {

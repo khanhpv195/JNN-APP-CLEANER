@@ -56,7 +56,7 @@ const TaskCard = memo(({
     const checkOut = formatDateTime(checkOutDate);
     
     const propertyName = propertyId?.name || 'Unknown Property';
-    const guestName = reservationDetails?.guest?.name || 'Unknown Guest';
+    const guestName = reservationDetails?.guest?.name || task.guest?.name || null;
     
     const formatAddress = () => {
         const address = propertyId?.address;
@@ -155,12 +155,14 @@ const TaskCard = memo(({
                         </View>
 
                         <View style={styles.guestSection}>
-                            <View style={styles.guestInfo}>
-                                <Ionicons name="person-outline" size={16} color="#666" />
-                                <Text style={styles.guestName} numberOfLines={1}>
-                                    {guestName}
-                                </Text>
-                            </View>
+                            {guestName && (
+                                <View style={styles.guestInfo}>
+                                    <Ionicons name="person-outline" size={16} color="#666" />
+                                    <Text style={styles.guestName} numberOfLines={1}>
+                                        {guestName}
+                                    </Text>
+                                </View>
+                            )}
                             
                             <Text style={styles.reservationId}>
                                 ID: {reservationId ? reservationId.slice(-8).toUpperCase() : 'N/A'}

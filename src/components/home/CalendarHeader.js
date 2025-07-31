@@ -17,22 +17,22 @@ const CalendarHeader = memo(({
     const today = new Date();
     const displayDate = today; // Use today instead of selectedDate
     
-    const formatSelectedDate = () => {
-        return "Today"; // Always show "Today" in timeline view
-    };
 
     return (
         <View style={styles.container}>
             <SafeLinearGradient
-                colors={['#00BFA6', '#00ACC1']}
+                colors={['#1A365D', '#2D3748']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.gradient}
             >
                 <View style={styles.content}>
                     <View style={styles.dateSection}>
-                        <Text style={styles.selectedDateLabel}>Timeline View</Text>
-                        <Text style={styles.selectedDate}>{formatSelectedDate()}</Text>
+                        <View style={styles.headerIconContainer}>
+                            <Ionicons name="calendar-outline" size={24} color="rgba(255, 255, 255, 0.8)" />
+                            <Text style={styles.selectedDateLabel}>Schedule Overview</Text>
+                        </View>
+                        <Text style={styles.selectedDate}>Timeline View</Text>
                         <Text style={styles.fullDate}>
                             {displayDate.toLocaleDateString('en-US', { 
                                 weekday: 'long',
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
         elevation: 6,
     },
     gradient: {
-        paddingVertical: 20,
+        paddingVertical: 24,
         paddingHorizontal: 24,
     },
     content: {
@@ -128,18 +128,23 @@ const styles = StyleSheet.create({
     dateSection: {
         flex: 1,
     },
+    headerIconContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
     selectedDateLabel: {
         fontSize: 12,
         color: 'rgba(255, 255, 255, 0.8)',
         fontWeight: '500',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
+        marginLeft: 8,
     },
     selectedDate: {
-        fontSize: 28,
+        fontSize: 24,
         fontWeight: 'bold',
         color: '#FFFFFF',
-        marginTop: 4,
         marginBottom: 2,
     },
     fullDate: {
