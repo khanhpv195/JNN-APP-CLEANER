@@ -1,5 +1,5 @@
 import { createStackNavigator } from '@react-navigation/stack';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 
 import InventoryListScreen from '../../screens/InventoryListScreen';
@@ -16,7 +16,7 @@ export default function InventoryNavigator() {
                 name="inventory"
                 component={InventoryListScreen}
                 options={({ navigation }) => ({
-                    tabBarIcon: ({ color }) => <Icon name="albums" color={color} size={24} />,
+                    tabBarIcon: ({ color }) => <Ionicons name="albums" color={color} size={24} />,
                     title: t('navigation.inventory'),
                     headerShown: false,
                 })}

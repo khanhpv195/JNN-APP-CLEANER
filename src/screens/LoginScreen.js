@@ -9,7 +9,7 @@ import {
     Alert,
     Platform,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser } from '@/redux/slices/authSlice';
 import * as Device from 'expo-device';
@@ -238,7 +238,7 @@ export default function LoginScreen({ navigation, route }) {
                         editable={!loading}
                     />
                     <TouchableOpacity onPress={() => setIsShow(!isShow)}>
-                        <Icon name={isShow ? "eye-outline" : "eye-off-outline"} size={24} color={theme.text} />
+                        <Ionicons name={isShow ? "eye-outline" : "eye-off-outline"} size={24} color={theme.text} />
                     </TouchableOpacity>
                 </View>
 
@@ -250,7 +250,7 @@ export default function LoginScreen({ navigation, route }) {
                         ]}
                         onPress={() => setKeepLoggedIn(!keepLoggedIn)}
                     >
-                        {keepLoggedIn && <Icon name="checkmark" size={16} color="white" />}
+                        {keepLoggedIn && <Ionicons name="checkmark" size={16} color="white" />}
                     </TouchableOpacity>
                     <ThemedText style={dynamicStyles.checkboxLabel}>Keep me logged in</ThemedText>
                 </View>
