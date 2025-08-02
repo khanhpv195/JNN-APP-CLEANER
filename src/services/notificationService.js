@@ -228,10 +228,10 @@ export function setupNotificationListeners(onNotification, onNotificationRespons
 // Remove notification listeners
 export function removeNotificationListeners(listeners) {
     if (listeners?.notificationListener) {
-        Notifications.removeNotificationSubscription(listeners.notificationListener);
+        listeners.notificationListener.remove();
     }
     if (listeners?.responseListener) {
-        Notifications.removeNotificationSubscription(listeners.responseListener);
+        listeners.responseListener.remove();
     }
 }
 

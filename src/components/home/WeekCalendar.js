@@ -1,24 +1,53 @@
 import { Ionicons } from '@expo/vector-icons';
 import { addDays, isSameDay, subDays } from 'date-fns';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-const WeekCalendar = ({ calendarDays, selectedDate, onDateSelect }) => {
+const WeekCalendar = ({ calendarDays = [], selectedDate, onDateSelect }) => {
     const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
     const scrollViewRef = useRef(null);
 
+    // Generate safe calendar data if the prop is not valid
+    const safeCalendarDays = useMemo(() => {
+        console.log('[WeekCalendar] Received calendarDays:', calendarDays, 'Type:', typeof calendarDays, 'Is Array:', Array.isArray(calendarDays));
+        
+        if (!Array.isArray(calendarDays) || calendarDays.length === 0) {
+            // Generate a basic week of days around today
+            const today = new Date();
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay()); // Start on Sunday
+            
+            const weekDays = [];
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(startOfWeek);
+                date.setDate(startOfWeek.getDate() + i);
+                weekDays.push({
+                    day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i],
+                    date: date.getDate(),
+                    fullDate: date,
+                    isToday: date.toDateString() === today.toDateString(),
+                    hasTask: false,
+                    tasksCount: 0
+                });
+            }
+            return weekDays;
+        }
+        
+        return calendarDays;
+    }, [calendarDays]);
+
     // Debug logging for calendar days
     useEffect(() => {
-        if (calendarDays && calendarDays.length > 0) {
-            const daysWithTasks = calendarDays.filter(day => day.hasTask);
-            console.log(`[WeekCalendar] Days with tasks: ${daysWithTasks.length}`);
+        if (safeCalendarDays && Array.isArray(safeCalendarDays) && safeCalendarDays.length > 0) {
+            const daysWithTasks = safeCalendarDays.filter(day => day.hasTask);
+            console.log('[WeekCalendar] Days with tasks:', daysWithTasks.length);
             
             if (daysWithTasks.length > 0) {
-                console.log(`[WeekCalendar] Days with tasks:`, 
-                    daysWithTasks.map(day => `${day.fullDate.toDateString()}: ${day.tasksCount} tasks`).join(', '));
+                console.log('[WeekCalendar] Days with tasks:', 
+                    daysWithTasks.map(day => day.fullDate.toDateString() + ': ' + day.tasksCount + ' tasks').join(', '));
             }
         }
-    }, [calendarDays]);
+    }, [safeCalendarDays]);
 
     // Scroll to center on mount and when selectedDate changes
     useEffect(() => {
@@ -89,12 +118,12 @@ const WeekCalendar = ({ calendarDays, selectedDate, onDateSelect }) => {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.daysContainer}
             >
-                {calendarDays.map((day, index) => {
+                {safeCalendarDays.map((day, index) => {
                     const isSelected = selectedDate && isSameDay(day.fullDate, selectedDate);
                     
                     // Debug log for days with tasks
                     if (day.hasTask) {
-                        console.log(`[WeekCalendar] Rendering day ${day.day} (${day.fullDate.toDateString()}) with ${day.tasksCount} tasks, hasTask=${day.hasTask}`);
+                        console.log('[WeekCalendar] Rendering day', day.day, day.fullDate.toDateString(), 'with', day.tasksCount, 'tasks, hasTask=', day.hasTask);
                     }
                     
                     return (

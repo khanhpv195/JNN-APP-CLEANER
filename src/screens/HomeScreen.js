@@ -3,6 +3,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import MonthCalendar from '../components/home/MonthCalendar';
 import CalendarHeader from '../components/home/CalendarHeader';
+import WeekCalendar from '../components/home/WeekCalendar';
 import TimelineTaskList from '../components/home/TimelineTaskList';
 import { useReservation } from '../hooks/useReservation';
 import { useCalendar } from '../hooks/useCalendar';
@@ -89,7 +90,9 @@ export default function HomeScreen() {
 
 
     const monthData = useMemo(() => {
-        return generateMonthDays(selectedMonth);
+        const data = generateMonthDays(selectedMonth);
+        console.log('[HomeScreen] Generated monthData:', data, 'Type:', typeof data, 'Is Array:', Array.isArray(data));
+        return data;
     }, [generateMonthDays, selectedMonth]);
 
     // Initialize calendar data on mount
@@ -196,6 +199,14 @@ export default function HomeScreen() {
 
     return (
         <View style={styles.container}>
+            <View style={styles.weekCalendarContainer}>
+                <WeekCalendar
+                    calendarDays={monthData}
+                    selectedDate={selectedDate}
+                    onDateSelect={handleDateSelect}
+                />
+            </View>
+
             <CalendarHeader
                 selectedDate={selectedDate}
                 selectedMonth={selectedMonth}
@@ -205,8 +216,6 @@ export default function HomeScreen() {
                 onNextYear={handleNextYear}
                 isLoading={loading && !dataLoaded}
             />
-
-            {/* WeekCalendar hidden in timeline view to avoid confusion */}
 
             {calendarExpanded && (
                 <View style={styles.monthCalendarContainer}>
@@ -237,11 +246,13 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F7FA',
-        padding: 16,
+        backgroundColor: '#FFFFFF',
     },
     weekCalendarContainer: {
-        marginBottom: 16,
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 8,
     },
     monthCalendarContainer: {
         marginBottom: 16,

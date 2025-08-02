@@ -1,7 +1,6 @@
 import { memo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import SafeLinearGradient from '../common/SafeLinearGradient';
 import { hapticFeedback } from '../../utils/haptics';
 
 const CalendarHeader = memo(({ 
@@ -13,57 +12,29 @@ const CalendarHeader = memo(({
     onNextYear,
     isLoading = false
 }) => {
-    // Always show today's date in header for timeline view
     const today = new Date();
-    const displayDate = today; // Use today instead of selectedDate
-    
+    const monthYear = today.toLocaleDateString('en-US', { 
+        month: 'short',
+        year: 'numeric'
+    });
 
     return (
         <View style={styles.container}>
-            <SafeLinearGradient
-                colors={['#1A365D', '#2D3748']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gradient}
-            >
-                <View style={styles.content}>
-                    <View style={styles.dateSection}>
-                        <View style={styles.headerIconContainer}>
-                            <Ionicons name="calendar-outline" size={24} color="rgba(255, 255, 255, 0.8)" />
-                            <Text style={styles.selectedDateLabel}>Schedule Overview</Text>
-                        </View>
-                        <Text style={styles.selectedDate}>Timeline View</Text>
-                        <Text style={styles.fullDate}>
-                            {displayDate.toLocaleDateString('en-US', { 
-                                weekday: 'long',
-                                month: 'long', 
-                                day: 'numeric',
-                                year: 'numeric' 
-                            })}
-                        </Text>
-                    </View>
-
-                    <TouchableOpacity 
-                        style={styles.toggleButton}
-                        onPress={() => {
-                            hapticFeedback.light();
-                            onToggleExpanded();
-                        }}
-                        activeOpacity={0.7}
-                    >
-                        <Text style={styles.toggleText}>
-                            {isExpanded ? "Hide Calendar" : "Show Calendar"}
-                        </Text>
-                        <Animated.View style={styles.chevronContainer}>
-                            <Ionicons
-                                name={isExpanded ? "chevron-up" : "chevron-down"}
-                                size={20}
-                                color="#FFFFFF"
-                            />
-                        </Animated.View>
+            <View style={styles.header}>
+                <Text style={styles.monthYearText}>{monthYear}</Text>
+                
+                <View style={styles.headerActions}>
+                    <TouchableOpacity style={styles.actionButton}>
+                        <Ionicons name="add" size={24} color="#00BFA6" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton}>
+                        <Ionicons name="funnel" size={20} color="#00BFA6" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton}>
+                        <Ionicons name="refresh" size={20} color="#00BFA6" />
                     </TouchableOpacity>
                 </View>
-            </SafeLinearGradient>
+            </View>
 
             {isExpanded && (
                 <View style={styles.yearNavigator}>
@@ -107,70 +78,31 @@ const CalendarHeader = memo(({
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 16,
-        borderRadius: 16,
-        overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 6,
+        backgroundColor: '#FFFFFF',
+        paddingBottom: 16,
     },
-    gradient: {
-        paddingVertical: 24,
-        paddingHorizontal: 24,
-    },
-    content: {
+    header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
     },
-    dateSection: {
-        flex: 1,
-    },
-    headerIconContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    selectedDateLabel: {
-        fontSize: 12,
-        color: 'rgba(255, 255, 255, 0.8)',
-        fontWeight: '500',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginLeft: 8,
-    },
-    selectedDate: {
+    monthYearText: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#FFFFFF',
-        marginBottom: 2,
+        color: '#1A1A1A',
     },
-    fullDate: {
-        fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.9)',
-        fontWeight: '400',
-    },
-    toggleButton: {
+    headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 25,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        gap: 8,
     },
-    toggleText: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '600',
-        marginRight: 8,
-    },
-    chevronContainer: {
-        width: 20,
-        height: 20,
+    actionButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0, 191, 166, 0.1)',
         justifyContent: 'center',
         alignItems: 'center',
     },
