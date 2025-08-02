@@ -199,14 +199,6 @@ export default function HomeScreen() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.weekCalendarContainer}>
-                <WeekCalendar
-                    calendarDays={monthData}
-                    selectedDate={selectedDate}
-                    onDateSelect={handleDateSelect}
-                />
-            </View>
-
             <CalendarHeader
                 selectedDate={selectedDate}
                 selectedMonth={selectedMonth}
@@ -216,6 +208,14 @@ export default function HomeScreen() {
                 onNextYear={handleNextYear}
                 isLoading={loading && !dataLoaded}
             />
+
+            <View style={styles.weekCalendarContainer}>
+                <WeekCalendar
+                    calendarDays={monthData}
+                    selectedDate={selectedDate}
+                    onDateSelect={handleDateSelect}
+                />
+            </View>
 
             {calendarExpanded && (
                 <View style={styles.monthCalendarContainer}>
@@ -248,21 +248,26 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#FFFFFF',
     },
-    weekCalendarContainer: {
+    calendarContainer: {
         backgroundColor: '#FFFFFF',
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 8,
-    },
-    monthCalendarContainer: {
+        marginHorizontal: 16,
         marginBottom: 16,
-        backgroundColor: '#FFFFFF',
         borderRadius: 12,
-        padding: 12,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 2,
+        overflow: 'hidden',
+    },
+    weekCalendarContainer: {
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+    },
+    monthCalendarContainer: {
+        padding: 16,
     },
 });

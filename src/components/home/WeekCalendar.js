@@ -1,10 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { addDays, isSameDay, subDays } from 'date-fns';
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { isSameDay } from 'date-fns';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const WeekCalendar = ({ calendarDays = [], selectedDate, onDateSelect }) => {
-    const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
     const scrollViewRef = useRef(null);
 
     // Generate safe calendar data if the prop is not valid
@@ -59,59 +58,10 @@ const WeekCalendar = ({ calendarDays = [], selectedDate, onDateSelect }) => {
         }
     }, [selectedDate]);
 
-    // Handle navigation between weeks
-    const navigateToPreviousWeek = () => {
-        const newDate = subDays(selectedDate, 7);
-        onDateSelect(newDate);
-    };
-
-    const navigateToNextWeek = () => {
-        const newDate = addDays(selectedDate, 7);
-        onDateSelect(newDate);
-    };
-
-    // Handle today button press
-    const goToToday = () => {
-        onDateSelect(new Date());
-    };
+    // Navigation functions removed - handled by parent CalendarHeader
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.navigationButton}
-                    onPress={navigateToPreviousWeek}
-                >
-                    <Ionicons name="chevron-back" size={24} color="#00BFA6" />
-                </TouchableOpacity>
-
-                <View style={styles.selectedDateDisplay}>
-                    <Text style={styles.selectedDateHeaderText}>
-                        {selectedDate.toLocaleDateString('en-US', { 
-                            weekday: 'short', 
-                            month: 'short', 
-                            day: 'numeric'
-                        })}
-                    </Text>
-                    <Text style={styles.selectedDateSubheader}>
-                        {selectedDate.getFullYear()}
-                    </Text>
-                    <TouchableOpacity
-                        style={styles.todayButton}
-                        onPress={goToToday}
-                    >
-                        <Text style={styles.todayButtonText}>Today</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity
-                    style={styles.navigationButton}
-                    onPress={navigateToNextWeek}
-                >
-                    <Ionicons name="chevron-forward" size={24} color="#00BFA6" />
-                </TouchableOpacity>
-            </View>
-
             <ScrollView
                 ref={scrollViewRef}
                 horizontal
@@ -180,48 +130,7 @@ const WeekCalendar = ({ calendarDays = [], selectedDate, onDateSelect }) => {
 const styles = StyleSheet.create({
     container: {
         backgroundColor: '#FFFFFF',
-        paddingVertical: 10,
-        borderRadius: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-        marginBottom: 10,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        marginBottom: 10,
-    },
-    navigationButton: {
-        padding: 5,
-    },
-    selectedDateDisplay: {
-        alignItems: 'center',
-    },
-    selectedDateHeaderText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    selectedDateSubheader: {
-        fontSize: 12,
-        color: '#666',
-        marginBottom: 4,
-    },
-    todayButton: {
-        backgroundColor: '#F0F8FF',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-    },
-    todayButtonText: {
-        color: '#00BFA6',
-        fontWeight: '600',
-        fontSize: 12,
+        paddingBottom: 8,
     },
     daysContainer: {
         paddingHorizontal: 10,
