@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hapticFeedback } from '../../utils/haptics';
 
 const CalendarHeader = memo(({ 
@@ -10,18 +11,51 @@ const CalendarHeader = memo(({
     onToggleExpanded,
     onPrevYear,
     onNextYear,
+    onClearDateSelection,
     isLoading = false
 }) => {
+    const insets = useSafeAreaInsets();
     const today = new Date();
     const monthYear = today.toLocaleDateString('en-US', { 
         month: 'short',
         year: 'numeric'
     });
 
+    const getPendingText = () => {
+        if (selectedDate) {
+            const selectedDateStr = new Date(selectedDate).toLocaleDateString('en-US', { 
+                month: 'short',
+                day: 'numeric'
+            });
+            return selectedDateStr;
+        }
+        return 'Pending';
+    };
+
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
             <View style={styles.mainHeader}>
-                <Text style={styles.monthYearText}>{monthYear}</Text>
+                <View style={styles.leftSection}>
+                    <Text style={styles.monthYearText}>{monthYear}</Text>
+                    <TouchableOpacity 
+                        style={[
+                            styles.pendingContainer,
+                            selectedDate && styles.selectedDateContainer
+                        ]}
+                        onPress={selectedDate ? onClearDateSelection : undefined}
+                        activeOpacity={selectedDate ? 0.7 : 1}
+                    >
+                        <Text style={[
+                            styles.pendingText,
+                            selectedDate && styles.selectedDateText
+                        ]}>
+                            {getPendingText()}
+                        </Text>
+                        {selectedDate && (
+                            <Ionicons name="close" size={14} color="#00BFA6" style={styles.clearIcon} />
+                        )}
+                    </TouchableOpacity>
+                </View>
                 
                 <View style={styles.rightActions}>
                     <TouchableOpacity style={styles.iconButton}>
@@ -107,11 +141,41 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         marginBottom: 8,
     },
+    leftSection: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
     monthYearText: {
         fontSize: 24,
         fontWeight: 'bold',
         color: '#1A1A1A',
-        flex: 1,
+        marginRight: 12,
+    },
+    pendingContainer: {
+        backgroundColor: '#FFF3E0',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#FFB74D',
+    },
+    pendingText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#FF9800',
+    },
+    selectedDateContainer: {
+        backgroundColor: 'rgba(0, 191, 166, 0.1)',
+        borderColor: '#00BFA6',
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    selectedDateText: {
+        color: '#00BFA6',
+    },
+    clearIcon: {
+        marginLeft: 6,
     },
     rightActions: {
         flexDirection: 'row',

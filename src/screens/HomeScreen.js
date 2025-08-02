@@ -34,12 +34,44 @@ export default function HomeScreen() {
         goToToday
     } = useCalendar(cleaningTasks);
 
-    // Helper function to create timeline data - only from today onwards
+    // Helper function to create timeline data - filtered by selected date
     const createTimelineData = useCallback(() => {
         const tasksGrouped = getAllTasksGroupedByDate();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
+        // If a specific date is selected, filter to show only that date
+        if (selectedDate) {
+            const selectedDateNormalized = new Date(selectedDate);
+            selectedDateNormalized.setHours(0, 0, 0, 0);
+            
+            const selectedDateGroup = tasksGrouped.find(group => {
+                const groupDate = new Date(group.date);
+                groupDate.setHours(0, 0, 0, 0);
+                return groupDate.getTime() === selectedDateNormalized.getTime();
+            });
+            
+            if (selectedDateGroup) {
+                return [{
+                    date: selectedDateGroup.date,
+                    tasks: selectedDateGroup.tasks,
+                    isToday: selectedDateNormalized.getTime() === today.getTime(),
+                    isTomorrow: false,
+                    dateObj: selectedDateNormalized
+                }];
+            } else {
+                // If no tasks for selected date, show empty day
+                return [{
+                    date: selectedDate.toISOString(),
+                    tasks: [],
+                    isToday: selectedDateNormalized.getTime() === today.getTime(),
+                    isTomorrow: false,
+                    dateObj: selectedDateNormalized
+                }];
+            }
+        }
+        
+        // Default behavior: show all upcoming tasks if no specific date selected
         const tomorrow = new Date(today);
         tomorrow.setDate(today.getDate() + 1);
 
@@ -81,7 +113,7 @@ export default function HomeScreen() {
         });
 
         return sortedGroups;
-    }, [getAllTasksGroupedByDate]);
+    }, [getAllTasksGroupedByDate, selectedDate]);
 
     // Memoized data
     const timelineData = useMemo(() => {
@@ -173,6 +205,11 @@ export default function HomeScreen() {
         }
     }, [selectDate, calendarExpanded]);
 
+    // Handle clear date selection - show all tasks
+    const handleClearDateSelection = useCallback(() => {
+        selectDate(null);
+    }, [selectDate]);
+
     // Handle month selection
     const handleMonthSelect = useCallback((monthIndex) => {
         selectMonth(monthIndex);
@@ -206,6 +243,7 @@ export default function HomeScreen() {
                 onToggleExpanded={toggleCalendarExpanded}
                 onPrevYear={handlePrevYear}
                 onNextYear={handleNextYear}
+                onClearDateSelection={handleClearDateSelection}
                 isLoading={loading && !dataLoaded}
             />
 
