@@ -30,7 +30,7 @@ const CalendarHeader = memo(({
             });
             return selectedDateStr;
         }
-        return 'Pending';
+        return 'All Tasks';
     };
 
     return (

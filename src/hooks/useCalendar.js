@@ -5,7 +5,8 @@ import { generateWeekWithIndicators, generateMonthWithIndicators } from '../util
 const SELECTED_DATE_KEY = '@cleaner_app/selected_date';
 
 export const useCalendar = (tasks = []) => {
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    // Start with null (no date selected) to show ALL tasks by default
+    const [selectedDate, setSelectedDate] = useState(null);
     const [selectedMonth, setSelectedMonth] = useState(new Date());
 
     const today = useMemo(() => {
@@ -34,10 +35,12 @@ export const useCalendar = (tasks = []) => {
                     return;
                 }
             }
-            setSelectedDate(today);
+            // Default to no date selection (show all tasks)
+            setSelectedDate(null);
             setSelectedMonth(today);
         } catch (error) {
-            setSelectedDate(today);
+            // Default to no date selection (show all tasks)
+            setSelectedDate(null);
             setSelectedMonth(today);
         }
     }, [today, normalizeDate]);
@@ -51,15 +54,24 @@ export const useCalendar = (tasks = []) => {
     }, []);
 
     const generateWeekDays = useCallback((centerDate = selectedDate) => {
-        const baseDate = normalizeDate(centerDate);
+        // If no date selected, use today as center for week display
+        const baseDate = normalizeDate(centerDate || today);
         return generateWeekWithIndicators(baseDate, tasks);
-    }, [selectedDate, tasks, normalizeDate]);
+    }, [selectedDate, tasks, today, normalizeDate]);
 
     const generateMonthDays = useCallback((monthDate = selectedMonth) => {
         return generateMonthWithIndicators(monthDate, tasks);
     }, [selectedMonth, tasks]);
 
     const selectDate = useCallback((date) => {
+        if (date === null) {
+            // Clear date selection - show all tasks
+            setSelectedDate(null);
+            // Clear persisted date
+            AsyncStorage.removeItem(SELECTED_DATE_KEY).catch(console.warn);
+            return;
+        }
+
         const newDate = normalizeDate(date);
         setSelectedDate(newDate);
         persistDate(newDate);
