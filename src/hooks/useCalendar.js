@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { generateWeekWithIndicators, generateMonthWithIndicators } from '../utils/calendarUtils';
 
 const SELECTED_DATE_KEY = '@cleaner_app/selected_date';
 
@@ -51,71 +52,12 @@ export const useCalendar = (tasks = []) => {
 
     const generateWeekDays = useCallback((centerDate = selectedDate) => {
         const baseDate = normalizeDate(centerDate);
-        const days = [];
-        const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-        for (let i = -3; i <= 3; i++) {
-            const date = new Date(baseDate);
-            date.setDate(baseDate.getDate() + i);
-            
-            const isToday = date.getTime() === today.getTime();
-            const tasksForDay = tasks.filter(task => {
-                const taskDate = normalizeDate(task.checkOutDate || task.reservationDetails?.checkOut);
-                return taskDate.getTime() === date.getTime();
-            });
-
-            days.push({
-                date: date.getDate(),
-                fullDate: date,
-                day: daysOfWeek[date.getDay()],
-                hasTask: tasksForDay.length > 0,
-                isToday,
-                tasksCount: tasksForDay.length
-            });
-        }
-
-        return days;
-    }, [selectedDate, tasks, today, normalizeDate]);
+        return generateWeekWithIndicators(baseDate, tasks);
+    }, [selectedDate, tasks, normalizeDate]);
 
     const generateMonthDays = useCallback((monthDate = selectedMonth) => {
-        const year = monthDate.getFullYear();
-        const month = monthDate.getMonth();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const firstDayOfMonth = new Date(year, month, 1).getDay();
-        
-        const days = [];
-
-        // Empty days for alignment
-        for (let j = 0; j < firstDayOfMonth; j++) {
-            days.push({ empty: true, day: '' });
-        }
-
-        // Actual days
-        for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(year, month, day);
-            const isToday = date.toDateString() === today.toDateString();
-            
-            const tasksForDay = tasks.filter(task => {
-                const taskDate = normalizeDate(task.checkOutDate || task.reservationDetails?.checkOut);
-                return taskDate.getTime() === date.getTime();
-            });
-
-            days.push({
-                day,
-                fullDate: date,
-                isToday,
-                hasTask: tasksForDay.length > 0,
-                tasksCount: tasksForDay.length
-            });
-        }
-
-        return {
-            year,
-            month,
-            monthName: monthDate.toLocaleString('en-US', { month: 'long' }),
-            days
-        };
-    }, [selectedMonth, tasks, today, normalizeDate]);
+        return generateMonthWithIndicators(monthDate, tasks);
+    }, [selectedMonth, tasks]);
 
     const selectDate = useCallback((date) => {
         const newDate = normalizeDate(date);

@@ -2,6 +2,8 @@ import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import TaskCard from './TaskCard';
+import TaskCardCompact from './TaskCardCompact';
+import { generateDateHeaderText } from '../../utils/calendarUtils';
 
 const DateGroup = memo(({ 
     date,
@@ -10,34 +12,93 @@ const DateGroup = memo(({
     isTomorrow = false,
     onTaskPress,
     onBookingInfoPress,
-    isExpanded = true
+    isExpanded = true,
+    useCompactCard = true,  // New prop to switch card types
+    showDateHeader = true   // New prop to control header display
 }) => {
 
-    // Render only task cards without any wrappers or date headers
     if (!isExpanded || tasks.length === 0) {
         return null;
     }
 
+    // Generate smart date header text
+    const dateHeaderText = generateDateHeaderText(new Date(date), true);
+    const TaskComponent = useCompactCard ? TaskCardCompact : TaskCard;
+
     return (
-        <>
-            {tasks.map((task, index) => (
-                <TaskCard
-                    key={task._id || index}
-                    task={task}
-                    onPress={onTaskPress}
-                    onBookingInfoPress={onBookingInfoPress}
-                    style={[
-                        styles.taskCard,
-                        index === 0 && styles.firstTask,
-                        index === tasks.length - 1 && styles.lastTask
-                    ]}
-                />
-            ))}
-        </>
+        <View style={styles.dateGroupContainer}>
+            {/* Smart Date Header (like "Today - Sat, Aug 2 2025") */}
+            {showDateHeader && (
+                <View style={styles.dateHeaderContainer}>
+                    <Text style={[
+                        styles.dateHeaderText,
+                        isToday && styles.todayHeaderText
+                    ]}>
+                        {dateHeaderText}
+                    </Text>
+                    
+                    {/* Task count indicator */}
+                    <View style={[
+                        styles.taskCountBadge,
+                        isToday && styles.todayTaskCountBadge
+                    ]}>
+                        <Text style={[
+                            styles.taskCountText,
+                            isToday && styles.todayTaskCountText
+                        ]}>
+                            {tasks.length}
+                        </Text>
+                    </View>
+                </View>
+            )}
+
+            {/* Task Cards */}
+            <View style={styles.tasksContainer}>
+                {tasks.map((task, index) => (
+                    <TaskComponent
+                        key={task._id || index}
+                        task={task}
+                        onPress={onTaskPress}
+                        onBookingInfoPress={onBookingInfoPress}
+                        style={[
+                            styles.taskCard,
+                            index === 0 && styles.firstTask,
+                            index === tasks.length - 1 && styles.lastTask
+                        ]}
+                    />
+                ))}
+            </View>
+        </View>
     );
 });
 
 const styles = StyleSheet.create({
+    dateGroupContainer: {
+        marginBottom: 24,
+    },
+    
+    // Smart Date Header (like reference UI)
+    dateHeaderContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#F8F9FA',
+        borderRadius: 8,
+        marginBottom: 12,
+    },
+    dateHeaderText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1A1A1A',
+        flex: 1,
+    },
+    todayHeaderText: {
+        color: '#00BFA6',
+        fontWeight: '700',
+    },
+    
     container: {
         marginBottom: 24,
     },
@@ -94,18 +155,24 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     taskCountBadge: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: '#E0E0E0',
         borderRadius: 12,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        minWidth: 28,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        minWidth: 24,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        justifyContent: 'center',
+    },
+    todayTaskCountBadge: {
+        backgroundColor: '#00BFA6',
     },
     taskCountText: {
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#666',
+    },
+    todayTaskCountText: {
+        color: '#FFFFFF',
     },
     tasksContainer: {
         paddingHorizontal: 4,
