@@ -7,11 +7,21 @@ import WeekCalendar from '../components/home/WeekCalendar';
 import TimelineTaskList from '../components/home/TimelineTaskList';
 import { useReservation } from '../hooks/useReservation';
 import { useCalendar } from '../hooks/useCalendar';
+import { 
+    createTimelineData, 
+    determineViewMode, 
+    getViewModeText, 
+    getEmptyStateMessage,
+    VIEW_MODES 
+} from '../utils/timelineUtils';
 
 export default function HomeScreen() {
     const navigation = useNavigation();
     const [calendarExpanded, setCalendarExpanded] = useState(false);
     const [dataLoaded, setDataLoaded] = useState(false);
+    
+    // View mode state for better UX clarity
+    const [currentViewMode, setCurrentViewMode] = useState(VIEW_MODES.ALL_UPCOMING);
     
     const { 
         cleaningTasks, 
@@ -34,91 +44,27 @@ export default function HomeScreen() {
         goToToday
     } = useCalendar(cleaningTasks);
 
-    // Helper function to create timeline data - filtered by selected date
-    const createTimelineData = useCallback(() => {
-        const tasksGrouped = getAllTasksGroupedByDate();
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        // If a specific date is selected, filter to show only that date
-        if (selectedDate) {
-            const selectedDateNormalized = new Date(selectedDate);
-            selectedDateNormalized.setHours(0, 0, 0, 0);
-            
-            const selectedDateGroup = tasksGrouped.find(group => {
-                const groupDate = new Date(group.date);
-                groupDate.setHours(0, 0, 0, 0);
-                return groupDate.getTime() === selectedDateNormalized.getTime();
-            });
-            
-            if (selectedDateGroup) {
-                return [{
-                    date: selectedDateGroup.date,
-                    tasks: selectedDateGroup.tasks,
-                    isToday: selectedDateNormalized.getTime() === today.getTime(),
-                    isTomorrow: false,
-                    dateObj: selectedDateNormalized
-                }];
-            } else {
-                // If no tasks for selected date, show empty day
-                return [{
-                    date: selectedDate.toISOString(),
-                    tasks: [],
-                    isToday: selectedDateNormalized.getTime() === today.getTime(),
-                    isTomorrow: false,
-                    dateObj: selectedDateNormalized
-                }];
-            }
-        }
-        
-        // Default behavior: show all upcoming tasks if no specific date selected
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
+    // Clean timeline data creation with proper view mode management
+    const timelineViewMode = useMemo(() => {
+        return determineViewMode(selectedDate);
+    }, [selectedDate]);
 
-        // Filter and group tasks by date - only today and future dates
-        const futureGroups = tasksGrouped
-            .map(group => {
-                const groupDate = new Date(group.date);
-                groupDate.setHours(0, 0, 0, 0);
-                
-                return {
-                    date: group.date,
-                    tasks: group.tasks,
-                    isToday: groupDate.getTime() === today.getTime(),
-                    isTomorrow: groupDate.getTime() === tomorrow.getTime(),
-                    dateObj: groupDate
-                };
-            })
-            .filter(group => group.dateObj >= today); // Only today and future
+    // Update current view mode when timeline view mode changes
+    useEffect(() => {
+        setCurrentViewMode(timelineViewMode);
+    }, [timelineViewMode]);
 
-        // Always include TODAY even if no tasks
-        const todayExists = futureGroups.some(group => group.isToday);
-        if (!todayExists) {
-            futureGroups.unshift({
-                date: today.toISOString(),
-                tasks: [],
-                isToday: true,
-                isTomorrow: false,
-                dateObj: today
-            });
-        }
-
-        // Sort: Today first, Tomorrow second, then chronologically
-        const sortedGroups = futureGroups.sort((a, b) => {
-            if (a.isToday) return -1;
-            if (b.isToday) return 1;
-            if (a.isTomorrow) return -1;
-            if (b.isTomorrow) return 1;
-            return a.dateObj - b.dateObj;
-        });
-
-        return sortedGroups;
-    }, [getAllTasksGroupedByDate, selectedDate]);
-
-    // Memoized data
+    // Clean, optimized timeline data
     const timelineData = useMemo(() => {
-        return createTimelineData();
-    }, [createTimelineData]);
+        return createTimelineData(cleaningTasks, currentViewMode, selectedDate);
+    }, [cleaningTasks, currentViewMode, selectedDate]);
+
+    // Current view information for better UX
+    const viewModeInfo = useMemo(() => ({
+        title: getViewModeText(currentViewMode, selectedDate),
+        emptyMessage: getEmptyStateMessage(currentViewMode, selectedDate),
+        hasDateFilter: currentViewMode === VIEW_MODES.DATE_FILTER
+    }), [currentViewMode, selectedDate]);
 
 
     const monthData = useMemo(() => {
@@ -205,9 +151,10 @@ export default function HomeScreen() {
         }
     }, [selectDate, calendarExpanded]);
 
-    // Handle clear date selection - show all tasks
+    // Handle clear date selection - return to all upcoming tasks
     const handleClearDateSelection = useCallback(() => {
         selectDate(null);
+        setCurrentViewMode(VIEW_MODES.ALL_UPCOMING);
     }, [selectDate]);
 
     // Handle month selection
@@ -270,6 +217,7 @@ export default function HomeScreen() {
 
             <TimelineTaskList
                 timelineData={timelineData}
+                viewModeInfo={viewModeInfo}
                 loading={loading && !dataLoaded}
                 error={error}
                 refreshing={fetching}

@@ -57,7 +57,7 @@ const LoadingSkeleton = memo(() => {
     );
 });
 
-const EmptyState = memo(({ onGoToToday }) => (
+const EmptyState = memo(({ viewModeInfo, onGoToToday }) => (
     <View style={styles.emptyContainer}>
         <SafeLinearGradient
             colors={['#F8F9FA', '#FFFFFF']}
@@ -67,9 +67,9 @@ const EmptyState = memo(({ onGoToToday }) => (
                 <Ionicons name="calendar-outline" size={64} color="#E0E0E0" />
             </View>
             
-            <Text style={styles.emptyTitle}>No tasks scheduled</Text>
+            <Text style={styles.emptyTitle}>No tasks found</Text>
             <Text style={styles.emptySubtitle}>
-                You have no cleaning tasks in the upcoming days
+                {viewModeInfo?.emptyMessage || 'No cleaning tasks available'}
             </Text>
 
             <TouchableOpacity
@@ -127,6 +127,7 @@ const ErrorState = memo(({ error, onRetry }) => (
 
 const TimelineTaskList = memo(({
     timelineData = [], // Array of { date, tasks, isToday, isTomorrow }
+    viewModeInfo = {}, // View mode information for better UX
     loading = false,
     error = null,
     refreshing = false,
@@ -148,11 +149,23 @@ const TimelineTaskList = memo(({
     }
 
     if (timelineData.length === 0) {
-        return <EmptyState onGoToToday={onGoToToday} />;
+        return <EmptyState viewModeInfo={viewModeInfo} onGoToToday={onGoToToday} />;
     }
 
     return (
         <View style={styles.container}>
+            {/* View Mode Header for better UX clarity */}
+            {viewModeInfo?.title && (
+                <View style={styles.viewModeHeader}>
+                    <Text style={styles.viewModeTitle}>{viewModeInfo.title}</Text>
+                    {viewModeInfo?.hasDateFilter && (
+                        <View style={styles.filterIndicator}>
+                            <Ionicons name="funnel" size={14} color="#00BFA6" />
+                        </View>
+                    )}
+                </View>
+            )}
+            
             <ScrollView
                 ref={scrollViewRef}
                 style={styles.scrollView}
@@ -338,6 +351,32 @@ const styles = StyleSheet.create({
 
     bottomPadding: {
         height: 20,
+    },
+
+    // View Mode Header
+    viewModeHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+    },
+    viewModeTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1A1A1A',
+        flex: 1,
+    },
+    filterIndicator: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: 'rgba(0, 191, 166, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });
 
