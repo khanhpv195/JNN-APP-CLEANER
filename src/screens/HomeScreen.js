@@ -14,6 +14,12 @@ import {
     getEmptyStateMessage,
     VIEW_MODES 
 } from '../utils/timelineUtils';
+import { 
+    validateTaskData, 
+    getDataIncompleteMessage,
+    extractPropertyInfo,
+    extractGuestInfo 
+} from '../utils/dataUtils';
 
 export default function HomeScreen() {
     const navigation = useNavigation();
@@ -107,31 +113,86 @@ export default function HomeScreen() {
         });
     }, [navigation]);
 
-    // Handle booking info press - with better data extraction
+    // Production-ready booking info handler
     const handleBookingInfoPress = useCallback((task) => {
-        // Debug: Log task structure to console
-        console.log('Task data:', JSON.stringify(task, null, 2));
+        const taskValidation = validateTaskData(task);
+        const propertyInfo = extractPropertyInfo(task);
+        const guestInfo = extractGuestInfo(task);
         
-        const propertyName = task.propertyId?.name || task.property?.name || 'Property Information';
-        const guestName = task.reservationDetails?.guest?.name || task.guest?.name || null;
-        const checkInDate = task.checkInDate || task.reservationDetails?.checkIn;
-        const checkOutDate = task.checkOutDate || task.reservationDetails?.checkOut;
-        const checkIn = checkInDate ? new Date(checkInDate).toLocaleDateString() : 'N/A';
-        const checkOut = checkOutDate ? new Date(checkOutDate).toLocaleDateString() : 'N/A';
-        const guests = task.reservationDetails?.numberOfGuests || task.numberOfGuests || 'N/A';
-        const reservationId = task.reservationId || task.id || 'N/A';
+        // Build message dynamically based on available data
+        let message = '';
+        let missingItems = [];
         
-        // Build message dynamically - skip guest if no data
-        let message = `Property: ${propertyName}`;
-        if (guestName) {
-            message += `\nGuest: ${guestName}`;
+        // Property information
+        if (propertyInfo.hasPropertyData) {
+            message += `Property: ${propertyInfo.name}`;
+            if (propertyInfo.hasAddress) {
+                message += `\nAddress: ${propertyInfo.address}`;
+            }
+        } else {
+            message += `Property: Not specified`;
+            missingItems.push('property details');
         }
-        message += `\nCheck-in: ${checkIn}`;
-        message += `\nCheck-out: ${checkOut}`;
-        message += `\nGuests: ${guests}`;
-        message += `\nReservation ID: ${reservationId}`;
         
-        Alert.alert('Booking Information', message, [{ text: 'Close' }]);
+        // Guest information
+        if (guestInfo.hasGuestData) {
+            message += `\nGuest: ${guestInfo.name}`;
+        } else {
+            missingItems.push('guest information');
+        }
+        
+        // Reservation ID
+        if (guestInfo.hasReservationId) {
+            const formattedId = guestInfo.reservationId.length >= 8 
+                ? guestInfo.reservationId.slice(-8).toUpperCase()
+                : guestInfo.reservationId.toUpperCase();
+            message += `\nReservation ID: ${formattedId}`;
+        } else {
+            missingItems.push('reservation ID');
+        }
+        
+        // Date information
+        const checkInDate = task.checkInDate;
+        const checkOutDate = task.checkOutDate;
+        
+        if (checkInDate) {
+            const checkIn = new Date(checkInDate).toLocaleDateString('en-US', { 
+                weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' 
+            });
+            message += `\nCheck-in: ${checkIn}`;
+        } else {
+            message += `\nCheck-in: Not specified`;
+            missingItems.push('check-in date');
+        }
+        
+        if (checkOutDate) {
+            const checkOut = new Date(checkOutDate).toLocaleDateString('en-US', { 
+                weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' 
+            });
+            message += `\nCheck-out: ${checkOut}`;
+        } else {
+            message += `\nCheck-out: Not specified`;
+            missingItems.push('check-out date');
+        }
+        
+        // Number of guests
+        const guests = task.reservationDetails?.numberOfGuests || task.numberOfGuests;
+        if (guests) {
+            message += `\nGuests: ${guests}`;
+        } else {
+            message += `\nGuests: Not specified`;
+            missingItems.push('guest count');
+        }
+        
+        // Add data completeness information if there are missing items
+        if (missingItems.length > 0) {
+            message += `\n\n⚠️ Incomplete Data`;
+            message += `\nMissing: ${missingItems.join(', ')}`;
+        }
+        
+        const alertTitle = taskValidation.isDataComplete ? 'Booking Information' : 'Task Details (Incomplete)';
+        
+        Alert.alert(alertTitle, message, [{ text: 'Close' }]);
     }, []);
 
     // Handle refresh

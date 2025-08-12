@@ -3,6 +3,12 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import SafeLinearGradient from '../common/SafeLinearGradient';
 import { hapticFeedback } from '../../utils/haptics';
+import { 
+    validateTaskData, 
+    createGuestDisplayText, 
+    safeFormatDateTime,
+    extractPropertyInfo 
+} from '../../utils/dataUtils';
 
 const TaskCard = memo(({ 
     task, 
@@ -27,38 +33,14 @@ const TaskCard = memo(({
         }).start();
     };
     
-    const {
-        _id,
-        propertyId,
-        checkOutDate,
-        checkInDate,
-        reservationId = '',
-        reservationDetails
-    } = task;
-
-    const formatDateTime = (dateString) => {
-        if (!dateString) return { date: 'N/A', time: 'N/A' };
-        const date = new Date(dateString);
-        return {
-            date: date.toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-                year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-            }),
-            time: date.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            })
-        };
-    };
-
-    const checkIn = formatDateTime(checkInDate);
-    const checkOut = formatDateTime(checkOutDate);
+    // Production-ready data validation and extraction
+    const taskValidation = validateTaskData(task);
+    const propertyInfo = extractPropertyInfo(task);
+    const guestDisplayInfo = createGuestDisplayText(taskValidation.guest);
     
-    const propertyName = propertyId?.name || 'Unknown Property';
-    const guestName = reservationDetails?.guest?.name || task.guest?.name || null;
+    // Safe date formatting
+    const checkIn = safeFormatDateTime(task.checkInDate);
+    const checkOut = safeFormatDateTime(task.checkOutDate);
 
     return (
         <TouchableOpacity 
@@ -73,24 +55,65 @@ const TaskCard = memo(({
         >
             <Animated.View style={[styles.container, { transform: [{ scale: scaleAnim }] }]}>
                 <View style={styles.cardContent}>
-                    <Text style={styles.propertyTitle} numberOfLines={1}>
-                        {propertyName}
-                    </Text>
+                    {/* Property Information */}
+                    <View style={styles.propertySection}>
+                        <Text style={styles.propertyTitle} numberOfLines={1}>
+                            {propertyInfo.hasPropertyData ? propertyInfo.name : 'Property Name Not Available'}
+                        </Text>
+                        {!propertyInfo.hasPropertyData && (
+                            <View style={styles.missingDataIndicator}>
+                                <Ionicons name="alert-circle" size={16} color="#FF9800" />
+                                <Text style={styles.missingDataText}>Property details incomplete</Text>
+                            </View>
+                        )}
+                    </View>
 
-                    <Text style={styles.timeLabel}>Started:</Text>
-                    <Text style={styles.timeText}>
-                        {checkIn.date} • {checkIn.time}
-                    </Text>
+                    {/* Check-in Information */}
+                    <View style={styles.timeSection}>
+                        <Text style={styles.timeLabel}>Started:</Text>
+                        {checkIn.hasDate ? (
+                            <Text style={styles.timeText}>
+                                {checkIn.date} • {checkIn.time}
+                            </Text>
+                        ) : (
+                            <Text style={styles.missingTimeText}>
+                                {checkIn.displayDate} • {checkIn.displayTime}
+                            </Text>
+                        )}
+                    </View>
                     
-                    <Text style={styles.timeLabel}>Ended:</Text>
-                    <Text style={styles.timeText}>
-                        {checkOut.date} • {checkOut.time}
-                    </Text>
+                    {/* Check-out Information */}
+                    <View style={styles.timeSection}>
+                        <Text style={styles.timeLabel}>Ended:</Text>
+                        {checkOut.hasDate ? (
+                            <Text style={styles.timeText}>
+                                {checkOut.date} • {checkOut.time}
+                            </Text>
+                        ) : (
+                            <Text style={styles.missingTimeText}>
+                                {checkOut.displayDate} • {checkOut.displayTime}
+                            </Text>
+                        )}
+                    </View>
 
-                    <Text style={styles.reservationText}>
-                        #{reservationId ? reservationId.slice(-8).toUpperCase() : '24142181'} {guestName || 'Paula Minorelli'}
-                    </Text>
+                    {/* Guest Information - Only show if available */}
+                    {guestDisplayInfo.showField && (
+                        <View style={styles.guestSection}>
+                            <Text style={styles.reservationText}>
+                                {guestDisplayInfo.text}
+                            </Text>
+                            {!guestDisplayInfo.isComplete && (
+                                <View style={styles.incompleteDataIndicator}>
+                                    <Ionicons name="information-circle" size={14} color="#666" />
+                                    <Text style={styles.incompleteDataText}>
+                                        Missing {guestDisplayInfo.missingData}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
 
+                    {/* Booking Info Button - Always show but adjust text */}
                     <TouchableOpacity 
                         style={styles.bookingInfoButton}
                         onPress={() => {
@@ -100,7 +123,9 @@ const TaskCard = memo(({
                         activeOpacity={0.6}
                     >
                         <Ionicons name="location" size={16} color="#00BFA6" />
-                        <Text style={styles.bookingInfoText}>Booking info</Text>
+                        <Text style={styles.bookingInfoText}>
+                            {taskValidation.isDataComplete ? 'Booking info' : 'View details'}
+                        </Text>
                         <Ionicons name="chevron-down" size={16} color="#00BFA6" />
                     </TouchableOpacity>
                 </View>
@@ -126,18 +151,42 @@ const styles = StyleSheet.create({
         borderLeftWidth: 4,
         borderLeftColor: '#00BFA6',
     },
+    
+    // Property Section
+    propertySection: {
+        marginBottom: 16,
+    },
     propertyTitle: {
         fontSize: 18,
         fontWeight: 'bold',
         color: '#1A1A1A',
-        marginBottom: 16,
+        marginBottom: 4,
+    },
+    missingDataIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+        borderRadius: 12,
+        alignSelf: 'flex-start',
+    },
+    missingDataText: {
+        fontSize: 12,
+        color: '#FF9800',
+        fontWeight: '500',
+        marginLeft: 4,
+    },
+    // Time Section
+    timeSection: {
+        marginBottom: 8,
     },
     timeLabel: {
         fontSize: 14,
         color: '#666',
         fontWeight: '500',
         marginBottom: 4,
-        marginTop: 8,
     },
     timeText: {
         fontSize: 16,
@@ -145,12 +194,39 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginBottom: 4,
     },
+    missingTimeText: {
+        fontSize: 16,
+        color: '#999',
+        fontWeight: '500',
+        fontStyle: 'italic',
+        marginBottom: 4,
+    },
+    
+    // Guest Section
+    guestSection: {
+        marginTop: 16,
+        marginBottom: 16,
+    },
     reservationText: {
         fontSize: 14,
         color: '#666',
         fontWeight: '500',
-        marginTop: 16,
-        marginBottom: 16,
+        marginBottom: 4,
+    },
+    incompleteDataIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        backgroundColor: 'rgba(102, 102, 102, 0.1)',
+        borderRadius: 10,
+        alignSelf: 'flex-start',
+    },
+    incompleteDataText: {
+        fontSize: 11,
+        color: '#666',
+        fontWeight: '400',
+        marginLeft: 3,
     },
     bookingInfoButton: {
         flexDirection: 'row',
