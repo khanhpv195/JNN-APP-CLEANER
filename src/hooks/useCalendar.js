@@ -136,19 +136,30 @@ export const useCalendar = (tasks = []) => {
         const newMonth = new Date(selectedMonth.getFullYear(), monthIndex, 1);
         setSelectedMonth(newMonth);
 
-        if (selectedDate.getMonth() !== monthIndex || 
-            selectedDate.getFullYear() !== newMonth.getFullYear()) {
-            const newSelectedDate = new Date(newMonth);
-            setSelectedDate(newSelectedDate);
-            persistDate(newSelectedDate);
-        }
-    }, [selectedMonth, selectedDate, persistDate]);
+        // Always update selectedDate to first day of new month for consistent behavior
+        const newSelectedDate = new Date(newMonth);
+        setSelectedDate(newSelectedDate);
+        persistDate(newSelectedDate);
+    }, [selectedMonth, persistDate]);
 
     const navigateYear = useCallback((direction) => {
-        const newYear = new Date(selectedMonth);
-        newYear.setFullYear(newYear.getFullYear() + direction);
-        setSelectedMonth(newYear);
-    }, [selectedMonth]);
+        const currentYear = selectedMonth.getFullYear();
+        const newYear = currentYear + direction;
+        
+        // Limit year range to 2025-2026 only
+        if (newYear < 2025 || newYear > 2026) {
+            return;
+        }
+        
+        const newDate = new Date(selectedMonth);
+        newDate.setFullYear(newYear);
+        setSelectedMonth(newDate);
+        
+        // Update selected date to maintain consistency
+        const newSelectedDate = new Date(newDate);
+        setSelectedDate(newSelectedDate);
+        persistDate(newSelectedDate);
+    }, [selectedMonth, persistDate]);
 
     const goToToday = useCallback(() => {
         setSelectedDate(today);

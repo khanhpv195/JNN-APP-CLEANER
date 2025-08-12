@@ -44,7 +44,7 @@ const TaskApis = {
      * @returns {Promise} - API response
      */
     updateTaskCleaner: (params = {}) => {
-        return POST('/updateTaskCleaner', {
+        return POST('/updateTaskStatus', {
             body: params
         });
     },

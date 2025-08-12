@@ -366,6 +366,47 @@ export const useReservation = () => {
     }, [cleaningTasks]);
 
     /**
+     * Fetch pending cleaning tasks
+     * This will get only pending tasks from the API
+     * @returns {Promise} - API response with pending tasks
+     */
+    const fetchPendingCleaningTasks = useCallback(async () => {
+        try {
+            if (fetching) {
+                console.log('Already fetching data, skipping redundant request');
+                return [];
+            }
+            
+            setFetching(true);
+            setLoading(true);
+            setError(null);
+            
+            console.log('Fetching pending cleaning tasks');
+            
+            // Call API to get only pending tasks
+            const response = await TaskApis.listPendingCleaningTasks({});
+
+            if (response && response.data) {
+                const tasks = response.data;
+                console.log(`Fetched ${tasks.length} pending tasks`);
+                
+                // Update state with pending tasks
+                setCleaningTasks(tasks);
+                
+                return tasks;
+            }
+            return [];
+        } catch (err) {
+            console.error('Error fetching pending cleaning tasks:', err);
+            setError(err.message || 'Failed to load pending cleaning tasks');
+            return [];
+        } finally {
+            setLoading(false);
+            setFetching(false);
+        }
+    }, [fetching]);
+
+    /**
      * Fetch all cleaning tasks without date filtering
      * This will get all tasks from the API in a single call
      * @returns {Promise} - API response with all tasks
@@ -462,6 +503,7 @@ export const useReservation = () => {
         fetchCleaningTasksNotPending,
         fetchCleaningTasksForMonth,
         fetchAllCleaningTasks,
+        fetchPendingCleaningTasks,
         getTaskDetails,
         updateTask,
         uploadImage,

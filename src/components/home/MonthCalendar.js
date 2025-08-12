@@ -91,31 +91,6 @@ const MonthCalendar = ({
                 })}
             </View>
 
-            <View style={styles.monthSelector}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.monthsScrollView}>
-                    {months.map((month, index) => (
-                        <TouchableOpacity
-                            key={index}
-                            style={[
-                                styles.monthButton,
-                                month.month === selectedMonth.getMonth() && styles.selectedMonthButton
-                            ]}
-                            onPress={() => {
-                                if (month && typeof month.month === 'number' && onMonthSelect) {
-                                    onMonthSelect(month.month);
-                                }
-                            }}
-                        >
-                            <Text style={[
-                                styles.monthButtonText,
-                                month.month === selectedMonth.getMonth() && styles.selectedMonthButtonText
-                            ]}>
-                                {month.monthName}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            </View>
         </View>
     );
 };
@@ -200,29 +175,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: 'white',
         textAlign: 'center',
-    },
-    monthSelector: {
-        marginTop: 16,
-    },
-    monthsScrollView: {
-        paddingVertical: 8,
-    },
-    monthButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        marginHorizontal: 4,
-        borderRadius: 16,
-    },
-    selectedMonthButton: {
-        backgroundColor: '#e6f7f5',
-    },
-    monthButtonText: {
-        fontSize: 14,
-        color: '#333',
-    },
-    selectedMonthButtonText: {
-        color: '#00BFA6',
-        fontWeight: 'bold',
     },
 });
 

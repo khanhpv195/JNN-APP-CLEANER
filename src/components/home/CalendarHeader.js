@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hapticFeedback } from '../../utils/haptics';
@@ -12,6 +12,7 @@ const CalendarHeader = memo(({
     onPrevYear,
     onNextYear,
     onClearDateSelection,
+    onMonthSelect,
     isLoading = false
 }) => {
     const insets = useSafeAreaInsets();
@@ -89,39 +90,92 @@ const CalendarHeader = memo(({
             </TouchableOpacity>
 
             {isExpanded && (
-                <View style={styles.yearNavigator}>
-                    <TouchableOpacity 
-                        onPress={() => {
-                            hapticFeedback.light();
-                            onPrevYear();
-                        }} 
-                        style={styles.yearButton}
-                        activeOpacity={0.6}
-                    >
-                        <Ionicons name="chevron-back" size={24} color="#00BFA6" />
-                    </TouchableOpacity>
-                    
-                    <View style={styles.yearContainer}>
-                        <Text style={styles.yearText}>
-                            {selectedMonth.getFullYear()}
-                        </Text>
-                        {isLoading && (
-                            <View style={styles.loadingIndicator}>
-                                <Ionicons name="refresh" size={16} color="#666" />
-                            </View>
-                        )}
+                <View style={styles.calendarControls}>
+                    <View style={styles.yearNavigator}>
+                        <TouchableOpacity 
+                            onPress={() => {
+                                hapticFeedback.light();
+                                onPrevYear();
+                            }} 
+                            style={[
+                                styles.yearButton,
+                                selectedMonth.getFullYear() <= 2025 && styles.disabledButton
+                            ]}
+                            activeOpacity={0.6}
+                            disabled={selectedMonth.getFullYear() <= 2025}
+                        >
+                            <Ionicons 
+                                name="chevron-back" 
+                                size={24} 
+                                color={selectedMonth.getFullYear() <= 2025 ? "#CCC" : "#00BFA6"} 
+                            />
+                        </TouchableOpacity>
+                        
+                        <View style={styles.yearContainer}>
+                            <Text style={styles.yearText}>
+                                {selectedMonth.getFullYear()}
+                            </Text>
+                            {isLoading && (
+                                <View style={styles.loadingIndicator}>
+                                    <Ionicons name="refresh" size={16} color="#666" />
+                                </View>
+                            )}
+                        </View>
+                        
+                        <TouchableOpacity 
+                            onPress={() => {
+                                hapticFeedback.light();
+                                onNextYear();
+                            }} 
+                            style={[
+                                styles.yearButton,
+                                selectedMonth.getFullYear() >= 2026 && styles.disabledButton
+                            ]}
+                            activeOpacity={0.6}
+                            disabled={selectedMonth.getFullYear() >= 2026}
+                        >
+                            <Ionicons 
+                                name="chevron-forward" 
+                                size={24} 
+                                color={selectedMonth.getFullYear() >= 2026 ? "#CCC" : "#00BFA6"} 
+                            />
+                        </TouchableOpacity>
                     </View>
-                    
-                    <TouchableOpacity 
-                        onPress={() => {
-                            hapticFeedback.light();
-                            onNextYear();
-                        }} 
-                        style={styles.yearButton}
-                        activeOpacity={0.6}
-                    >
-                        <Ionicons name="chevron-forward" size={24} color="#00BFA6" />
-                    </TouchableOpacity>
+
+                    <View style={styles.monthSelector}>
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.monthScrollContainer}
+                        >
+                            {Array.from({ length: 12 }, (_, index) => {
+                                const monthName = new Date(2025, index, 1).toLocaleDateString('en-US', { month: 'short' });
+                                const isSelected = selectedMonth.getMonth() === index;
+                                
+                                return (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={[
+                                            styles.monthButton,
+                                            isSelected && styles.selectedMonthButton
+                                        ]}
+                                        onPress={() => {
+                                            hapticFeedback.light();
+                                            onMonthSelect && onMonthSelect(index);
+                                        }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={[
+                                            styles.monthButtonText,
+                                            isSelected && styles.selectedMonthButtonText
+                                        ]}>
+                                            {monthName}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
                 </View>
             )}
         </View>
@@ -206,20 +260,25 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         marginRight: 6,
     },
+    calendarControls: {
+        backgroundColor: '#FFFFFF',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0, 191, 166, 0.1)',
+    },
     yearNavigator: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
         paddingVertical: 16,
         paddingHorizontal: 24,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(0, 191, 166, 0.1)',
     },
     yearButton: {
         padding: 8,
         borderRadius: 20,
         backgroundColor: 'rgba(0, 191, 166, 0.1)',
+    },
+    disabledButton: {
+        backgroundColor: 'rgba(204, 204, 204, 0.3)',
     },
     yearContainer: {
         flexDirection: 'row',
@@ -232,6 +291,37 @@ const styles = StyleSheet.create({
     },
     loadingIndicator: {
         marginLeft: 8,
+    },
+    monthSelector: {
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0, 191, 166, 0.05)',
+    },
+    monthScrollContainer: {
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+    },
+    monthButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        marginHorizontal: 4,
+        borderRadius: 16,
+        backgroundColor: '#F5F7FA',
+        minWidth: 50,
+        alignItems: 'center',
+    },
+    selectedMonthButton: {
+        backgroundColor: '#00BFA6',
+    },
+    monthButtonText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#666',
+    },
+    selectedMonthButtonText: {
+        color: '#FFFFFF',
+        fontWeight: 'bold',
     },
 });
 

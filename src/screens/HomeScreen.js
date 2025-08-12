@@ -244,6 +244,7 @@ export default function HomeScreen() {
                 onPrevYear={handlePrevYear}
                 onNextYear={handleNextYear}
                 onClearDateSelection={handleClearDateSelection}
+                onMonthSelect={handleMonthSelect}
                 isLoading={loading && !dataLoaded}
             />
 

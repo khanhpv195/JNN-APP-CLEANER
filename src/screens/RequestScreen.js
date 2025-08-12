@@ -1,18 +1,18 @@
-import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Platform, ToastAndroid, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { useReservation } from '../hooks/useReservation';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Platform, StyleSheet, Text, ToastAndroid, TouchableOpacity, View } from 'react-native';
 import { STATUS } from '../constants/status';
+import { useReservation } from '../hooks/useReservation';
 
 export default function RequestScreen() {
     const navigation = useNavigation();
-    const { cleaningTasks, loading, error, updateTask, fetchAllCleaningTasks } = useReservation();
+    const { cleaningTasks, loading, error, updateTask, fetchPendingCleaningTasks } = useReservation();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [hasInitialized, setHasInitialized] = useState(false);
 
     const refreshData = useCallback(() => {
-        fetchAllCleaningTasks();
+        fetchPendingCleaningTasks();
     }, []);
 
     useFocusEffect(
@@ -24,7 +24,7 @@ export default function RequestScreen() {
         }, [hasInitialized, refreshData])
     );
 
-    const pendingTasks = cleaningTasks.filter(task => task.status === STATUS.PENDING);
+    const pendingTasks = cleaningTasks;
 
     const handleTaskPress = (task) => {
         navigation.navigate('TaskDetail', {
