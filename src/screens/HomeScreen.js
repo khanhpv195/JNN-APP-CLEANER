@@ -115,7 +115,6 @@ export default function HomeScreen() {
 
     // Production-ready booking info handler
     const handleBookingInfoPress = useCallback((task) => {
-        const taskValidation = validateTaskData(task);
         const propertyInfo = extractPropertyInfo(task);
         const guestInfo = extractGuestInfo(task);
         
@@ -184,13 +183,9 @@ export default function HomeScreen() {
             missingItems.push('guest count');
         }
         
-        // Add data completeness information if there are missing items
-        if (missingItems.length > 0) {
-            message += `\n\n⚠️ Incomplete Data`;
-            message += `\nMissing: ${missingItems.join(', ')}`;
-        }
+        // Note: We no longer show incomplete data warnings to keep UI clean
         
-        const alertTitle = taskValidation.isDataComplete ? 'Booking Information' : 'Task Details (Incomplete)';
+        const alertTitle = 'Task Details';
         
         Alert.alert(alertTitle, message, [{ text: 'Close' }]);
     }, []);

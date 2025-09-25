@@ -50,7 +50,7 @@ const MonthCalendar = ({
             <View style={styles.monthDaysGrid}>
                 {currentMonth.days.map((day, index) => {
                     // Debug log for days with tasks
-                    if (!day.empty && day.hasTask) {
+                    if (!day.empty && day.hasTask && day.day !== undefined) {
                         console.log(`[MonthCalendar] Rendering day ${day.day} with ${day.tasksCount} tasks`);
                     }
                     
@@ -61,7 +61,7 @@ const MonthCalendar = ({
                                 styles.calendarDay,
                                 day.empty && styles.emptyDay,
                                 day.isToday && styles.calendarToday,
-                                day.fullDate &&
+                                day.fullDate && selectedDate &&
                                 selectedDate.toDateString() === day.fullDate.toDateString() &&
                                 styles.calendarDaySelected
                             ]}
@@ -71,7 +71,7 @@ const MonthCalendar = ({
                             <Text style={[
                                 styles.calendarDayText,
                                 day.isToday && styles.todayText,
-                                day.fullDate &&
+                                day.fullDate && selectedDate &&
                                 selectedDate.toDateString() === day.fullDate.toDateString() &&
                                 styles.calendarDayTextSelected
                             ]}>

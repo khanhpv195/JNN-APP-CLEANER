@@ -35,6 +35,42 @@ export const extractGuestInfo = (task) => {
 };
 
 /**
+ * Formats an address object into a readable string
+ * @param {Object|string} address - Address object or string
+ * @returns {string|null} Formatted address string
+ */
+export const formatAddress = (address) => {
+  if (!address) return null;
+  
+  // If it's already a string, return it
+  if (typeof address === 'string') {
+    return address.trim();
+  }
+  
+  // If it's an object, format it properly
+  if (typeof address === 'object') {
+    const parts = [];
+    
+    // Add street address
+    if (address.street) parts.push(address.street);
+    
+    // Add city
+    if (address.city) parts.push(address.city);
+    
+    // Add state and postcode together if available
+    const statePostcode = [address.state, address.postcode].filter(Boolean).join(' ');
+    if (statePostcode) parts.push(statePostcode);
+    
+    // Add country if different from country_name and if specified
+    if (address.country_name) parts.push(address.country_name);
+    
+    return parts.length > 0 ? parts.join(', ') : null;
+  }
+  
+  return null;
+};
+
+/**
  * Safely extracts property information from task data
  * @param {Object} task - Task object  
  * @returns {Object} Property info with validation flags
@@ -55,16 +91,19 @@ export const extractPropertyInfo = (task) => {
                       task.propertyName ||
                       null;
 
-  const propertyAddress = task.propertyId?.address || 
-                         task.property?.address ||
-                         task.propertyAddress ||
-                         null;
+  const rawAddress = task.propertyId?.address || 
+                    task.property?.address ||
+                    task.propertyAddress ||
+                    null;
+
+  // Format the address properly
+  const formattedAddress = formatAddress(rawAddress);
 
   return {
     name: propertyName,
-    address: propertyAddress,
+    address: formattedAddress,
     hasPropertyData: Boolean(propertyName),
-    hasAddress: Boolean(propertyAddress)
+    hasAddress: Boolean(formattedAddress)
   };
 };
 

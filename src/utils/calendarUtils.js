@@ -46,7 +46,8 @@ export const createEnhancedDayData = (date, tasks = []) => {
   const taskCount = dayTasks.length;
   
   return {
-    date: normalizedDate.getDate(),
+    date: normalizedDate.getDate(),    // For WeekCalendar compatibility
+    day: normalizedDate.getDate(),     // For MonthCalendar compatibility  
     fullDate: normalizedDate,
     dayName: normalizedDate.toLocaleDateString('en-US', { weekday: 'short' }),
     isToday: normalizedDate.getTime() === today.getTime(),
